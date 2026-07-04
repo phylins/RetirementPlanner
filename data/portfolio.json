@@ -1,0 +1,17 @@
+{
+  "topLevel": {"stock":65,"bond":30,"cash":5},
+  "equity": {
+    "00631L": {"weight":20,"cagr":13.0,"vol":48,"category":"taiwanLeveraged"},
+    "VOO": {"weight":40,"cagr":9.5,"vol":17,"category":"usCore"},
+    "VTI": {"weight":10,"cagr":9.3,"vol":18,"category":"usCore"},
+    "VXUS": {"weight":10,"cagr":7.5,"vol":19,"category":"global"},
+    "SOXX": {"weight":20,"cagr":10.5,"vol":31,"category":"semiconductor"}
+  },
+  "bond": {
+    "IEF": {"weight":55,"cagr":3.5,"vol":8,"category":"treasury"},
+    "TLT": {"weight":15,"cagr":4.0,"vol":17,"category":"longTreasury"},
+    "VCIT": {"weight":15,"cagr":4.5,"vol":9,"category":"credit"},
+    "SGOV": {"weight":15,"cagr":3.5,"vol":1,"category":"cashLike"}
+  },
+  "cash": {"cagr":2.0,"vol":0.5}
+}
