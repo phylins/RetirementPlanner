@@ -58,3 +58,15 @@
 @media(max-width:1600px){.diagnostics-panel{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar-actions{justify-content:flex-start}.version-badge{text-align:left}}
 @media(max-width:900px){.diagnostics-panel{grid-template-columns:1fr}.topbar-actions{width:100%}.secondary,.primary{width:100%}.version-badge{width:100%}}
 .control-row.number-only{grid-template-columns:minmax(130px,1fr) 92px}.control-row.number-only input[type=text]{grid-column:2/3}
+
+
+/* v5.7: net-worth scenario snapshot and control order */
+.snapshot-box{margin:10px 0 12px;padding:11px;background:#fff;border:1px solid #e3eafb;border-radius:13px;box-shadow:0 4px 16px rgba(15,23,42,.035)}
+.snapshot-title{font-size:12px;font-weight:900;color:#334155;margin-bottom:8px;letter-spacing:.02em}
+.snapshot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.snapshot-grid div{border:1px solid #edf2f8;background:#f8fbff;border-radius:10px;padding:8px 7px;min-width:0}
+.snapshot-grid span{display:block;font-size:11px;font-weight:900;color:#64748b}
+.snapshot-grid b{display:block;margin-top:2px;font-size:15px;color:#102033;white-space:nowrap}
+.snapshot-grid small{display:block;margin-top:2px;font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snapshot-box p{font-size:11px;line-height:1.4;margin:8px 0 0;color:#64748b}
+.scenario-top .scenario-buttons{margin-top:10px}

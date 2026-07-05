@@ -1,12 +1,12 @@
-<!-- Retirement Planner v5.6 root index. If you see JavaScript text instead of the app, repo root index.html was overwritten incorrectly. -->
+<!-- Retirement Planner v5.7 root index. If you see JavaScript text instead of the app, repo root index.html was overwritten incorrectly. -->
 <!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Retirement Planner v5.6</title>
+  <title>Retirement Planner v5.7</title>
   <link rel="manifest" href="./public/manifest.json" />
-  <link rel="stylesheet" href="./src/styles.css?v=5.6.0" />
+  <link rel="stylesheet" href="./src/styles.css?v=5.7.0" />
   <meta name="theme-color" content="#165dff" />
 </head>
 <body>
@@ -16,24 +16,23 @@
         <div class="logo">RP</div>
         <div>
           <h1>Retirement Planner</h1>
-          <p>v5.6 PWA</p>
+          <p>v5.7 PWA</p>
         </div>
       </div>
+
       <section class="control-block compact scenario-top">
         <h2>淨資產試算</h2>
+        <div class="snapshot-box">
+          <div class="snapshot-title">2026 當下資產參考</div>
+          <div class="snapshot-grid">
+            <div><span>淨資產</span><b>1.40億</b><small>NT$139,769,290</small></div>
+            <div><span>現金</span><b>855萬</b><small>NT$8,551,055</small></div>
+            <div><span>投資</span><b>1.83億</b><small>NT$182,697,522</small></div>
+            <div><span>負債</span><b>5,148萬</b><small>NT$51,479,287</small></div>
+          </div>
+          <p>淨資產 = 現金 + 投資 − 負債。淨資產試算會用此差額換算可投資資產。</p>
+        </div>
         <div id="scenario-buttons" class="scenario-buttons"></div>
-      </section>
-      <section class="control-block">
-        <h2>起始條件</h2>
-        <div id="input-investable"></div>
-        <div id="input-living"></div>
-        <div id="input-years"></div>
-        <div id="input-cape"></div>
-      </section>
-      <section class="control-block">
-        <h2>收入與稅</h2>
-        <div id="input-income-self"></div>
-        <div id="input-income-spouse"></div>
       </section>
       <section class="control-block">
         <h2>模式</h2>
@@ -51,7 +50,18 @@
           <p><b>Spending Smile：</b>退休前期花費較高，中後期趨緩或下降，晚年預留醫療支出上升空間。</p>
         </div>
       </section>
-
+      <section class="control-block">
+        <h2>起始條件</h2>
+        <div id="input-investable"></div>
+        <div id="input-living"></div>
+        <div id="input-years"></div>
+        <div id="input-cape"></div>
+      </section>
+      <section class="control-block">
+        <h2>收入與稅</h2>
+        <div id="input-income-self"></div>
+        <div id="input-income-spouse"></div>
+      </section>
       <section class="control-block">
         <h2>股債現金</h2>
         <div id="input-stock"></div>
@@ -74,7 +84,7 @@
           <p>41歲起算，預設 65% 股票 / 30% 債券 / 5% 現金，股票內含 00631L 與 SOXX。</p>
         </div>
         <div class="topbar-actions">
-          <div class="version-badge"><b>v5.6</b><span>最後更新：2026-07-05</span></div>
+          <div class="version-badge"><b>v5.7</b><span>最後更新：2026-07-05</span></div>
           <button id="export-cashflow-btn" class="secondary">匯出年度明細 CSV</button>
           <button id="export-decision-btn" class="secondary">匯出決策矩陣 CSV</button>
           <button id="save-btn" class="primary">儲存設定</button>
@@ -115,6 +125,6 @@
       <button id="save-modal-close" class="modal-close" type="button">知道了</button>
     </div>
   </div>
-  <script type="module" src="./src/app.js?v=5.6.0"></script>
+  <script type="module" src="./src/app.js?v=5.7.0"></script>
 </body>
 </html>
