@@ -36,10 +36,12 @@
   "cape": 40,
   "safemaxBase": 3.25,
   "dynamicCola": true,
-  "dynamicColaInflationThreshold": 4.0,
-  "dynamicColaDrawdownThreshold": -12.0,
+  "dynamicColaInflationThreshold": 5.0,
+  "dynamicColaDrawdownThreshold": -5.0,
   "dynamicColaWithdrawalThreshold": 4.5,
   "marketMode": "regime",
   "spendingStrategy": "smile",
-  "dynamicColaFreezeRule": "balanced"
+  "dynamicColaFreezeRule": "balanced",
+  "dynamicColaStockDrawdownThreshold": -5.0,
+  "dynamicColaBondDrawdownThreshold": -5.0
 }

@@ -1,12 +1,12 @@
-<!-- Retirement Planner v5.1 root index. If you see JavaScript text instead of the app, repo root index.html was overwritten incorrectly. -->
+<!-- Retirement Planner v5.2 root index. If you see JavaScript text instead of the app, repo root index.html was overwritten incorrectly. -->
 <!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Retirement Planner v5.1</title>
+  <title>Retirement Planner v5.2</title>
   <link rel="manifest" href="./public/manifest.json" />
-  <link rel="stylesheet" href="./src/styles.css?v=5.0.0" />
+  <link rel="stylesheet" href="./src/styles.css?v=5.2.0" />
   <meta name="theme-color" content="#165dff" />
 </head>
 <body>
@@ -16,7 +16,7 @@
         <div class="logo">RP</div>
         <div>
           <h1>Retirement Planner</h1>
-          <p>v5.1 PWA</p>
+          <p>v5.2 PWA</p>
         </div>
       </div>
       <section class="control-block compact scenario-top">
@@ -41,8 +41,12 @@
         <label class="field"><span>支出策略</span><select id="spending-select"></select></label>
         <label class="toggle"><input type="checkbox" id="dynamic-cola" checked /> <span>啟用 Dynamic COLA Freeze</span></label>
         <label class="field"><span>Freeze 條件</span><select id="freeze-rule-select"></select></label>
+        <div id="input-freeze-inflation"></div>
+        <div id="input-freeze-stock"></div>
+        <div id="input-freeze-bond"></div>
+        <div id="input-freeze-withdrawal"></div>
         <div class="term-help">
-          <p><b>Dynamic COLA Freeze：</b>遇到高通膨、投資下跌或提領率過高時，暫停調升生活費，降低資產耗盡風險。</p>
+          <p><b>Dynamic COLA Freeze：</b>遇到高通膨、股票/債券下跌或提領率過高時，依你設定的門檻暫停調升生活費，降低資產耗盡風險。</p>
           <p><b>Shiller CAPE：</b>用過去 10 年平均實質盈餘衡量美股估值，高 CAPE 通常代表未來安全提領率要更保守。</p>
           <p><b>Spending Smile：</b>退休前期花費較高，中後期趨緩或下降，晚年預留醫療支出上升空間。</p>
         </div>
@@ -70,7 +74,7 @@
           <p>41歲起算，預設 65% 股票 / 30% 債券 / 5% 現金，股票內含 00631L 與 SOXX。</p>
         </div>
         <div class="topbar-actions">
-          <div class="version-badge"><b>v5.1</b><span>最後更新：2026-07-05</span></div>
+          <div class="version-badge"><b>v5.2</b><span>最後更新：2026-07-05</span></div>
           <button id="export-cashflow-btn" class="secondary">匯出年度明細 CSV</button>
           <button id="export-decision-btn" class="secondary">匯出決策矩陣 CSV</button>
           <button id="save-btn" class="primary">儲存設定</button>
@@ -111,6 +115,6 @@
       <button id="save-modal-close" class="modal-close" type="button">知道了</button>
     </div>
   </div>
-  <script type="module" src="./src/app.js?v=5.0.0"></script>
+  <script type="module" src="./src/app.js?v=5.2.0"></script>
 </body>
 </html>

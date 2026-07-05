@@ -13,13 +13,13 @@ const modes = [
 const strategies = [['classic','Classic COLA'],['dynamic','Dynamic COLA'],['smile','Spending Smile'],['guardrails','Guardrails']];
 const freezeRules = [
   ['any','寬鬆：任一條件觸發'],
-  ['balanced','平衡：高通膨+負報酬，或提領率過高'],
+  ['balanced','平衡：高通膨+股/債下跌，或提領率過高'],
   ['withdrawalOnly','嚴格：只有提領率過高']
 ];
 let state, loans, scenarios, portfolio;
 const SIM_RUNS = 360;
 const SIM_SEED = 202600;
-const APP_VERSION = '5.1.0';
+const APP_VERSION = '5.2.0';
 let contributionSort = { key: 'riskShare', dir: 'desc' };
 let currentSim = null;
 let currentMatrix = null;
@@ -64,6 +64,10 @@ function setupControls(){
   const ss=$('spending-select'); ss.innerHTML=strategies.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); ss.value=state.spendingStrategy; ss.onchange=()=>{state.spendingStrategy=ss.value;render();};
   $('dynamic-cola').checked=state.dynamicCola; $('dynamic-cola').onchange=e=>{state.dynamicCola=e.target.checked;render();};
   const fr=$('freeze-rule-select'); if(fr){ fr.innerHTML=freezeRules.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); fr.value=state.dynamicColaFreezeRule || 'balanced'; fr.onchange=()=>{ state.dynamicColaFreezeRule=fr.value; render(); }; }
+  if ($('input-freeze-inflation')) control('input-freeze-inflation','Freeze 通膨門檻 (%)',0,12,0.5,state.dynamicColaInflationThreshold ?? 5,v=>state.dynamicColaInflationThreshold=v);
+  if ($('input-freeze-stock')) control('input-freeze-stock','Freeze 股票跌幅門檻 (%)',-50,0,1,state.dynamicColaStockDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5,v=>state.dynamicColaStockDrawdownThreshold=v);
+  if ($('input-freeze-bond')) control('input-freeze-bond','Freeze 債券跌幅門檻 (%)',-30,0,1,state.dynamicColaBondDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5,v=>state.dynamicColaBondDrawdownThreshold=v);
+  if ($('input-freeze-withdrawal')) control('input-freeze-withdrawal','Freeze 提領率門檻 (%)',2,10,0.1,state.dynamicColaWithdrawalThreshold ?? 4.5,v=>state.dynamicColaWithdrawalThreshold=v);
   const sb=$('scenario-buttons'); sb.innerHTML=''; scenarios.forEach(netWorth=>{
     const investable = investableFromNetWorth(netWorth);
     const b=document.createElement('button');
@@ -84,7 +88,7 @@ function renderKpis(sim, loanRows){
 }
 function table(node, headers, rows){ node.innerHTML=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`; }
 function renderTables(sim, matrix, marginal){
-  table($('cashflow-table'), ['年份','年齡','生活費','貸款','總支出','通膨','Freeze','提領率','投資報酬','新增投資','貸款餘額'], sim.sample.map(r=>`<tr><td>${r.year}</td><td>${r.age}</td><td>${twMoney(r.living)}</td><td>${twMoney(r.loanPayment)}</td><td>${twMoney(r.totalSpending)}</td><td>${pct(r.inflation,1)}</td><td>${r.freeze ? 'Y' : ''}</td><td>${pct(r.withdrawalRate,2)}</td><td>${twMoney(r.investmentReturn)}</td><td>${twMoney(r.contribution)}</td><td>${twWan(r.loanBalance)}</td></tr>`));
+  table($('cashflow-table'), ['年份','年齡','生活費','貸款','總支出','通膨','股票報酬','債券報酬','Freeze','提領率','投資報酬','新增投資','貸款餘額'], sim.sample.map(r=>`<tr><td>${r.year}</td><td>${r.age}</td><td>${twMoney(r.living)}</td><td>${twMoney(r.loanPayment)}</td><td>${twMoney(r.totalSpending)}</td><td>${pct(r.inflation,1)}</td><td>${pct(r.stockRet ?? 0,1)}</td><td>${pct(r.bondRet ?? 0,1)}</td><td>${r.freeze ? 'Y' : ''}</td><td>${pct(r.withdrawalRate,2)}</td><td>${twMoney(r.investmentReturn)}</td><td>${twMoney(r.contribution)}</td><td>${twWan(r.loanBalance)}</td></tr>`));
   table($('decision-table'), ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'], matrix.map((r,i)=>`<tr><td>${twMoney(netWorthFromInvestable(r.assets),1)}</td><td>${twMoney(r.assets,1)}</td><td>${pct(r.firstWithdrawalRate,2)}</td><td>${pct(r.successRate,1)}</td><td>${pct(r.safemax,2)}</td><td>${r.advice}</td><td>${i===0?'—':pct(matrix[i].successRate-matrix[i-1].successRate,1)}</td></tr>`));
 }
 function buildContributionRows(stats) {
@@ -160,15 +164,15 @@ function downloadCsv(filename, headers, rows) {
 }
 function exportCashflowCsv() {
   if (!currentSim) return;
-  const headers = ['年份','年齡','年初資產','年底資產','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額','通膨','報酬','Freeze'];
-  const rows = currentSim.sample.map(r => [r.year,r.age,Math.round(r.beginAssets),Math.round(r.assets),Math.round(r.living),Math.round(r.loanPayment),Math.round(r.totalSpending),r.withdrawalRate.toFixed(2),Math.round(r.investmentReturn),Math.round(r.contribution),Math.round(r.loanBalance),r.inflation?.toFixed?.(2) ?? '',r.ret?.toFixed?.(2) ?? '',r.freeze ? 'Y':'N']);
-  downloadCsv('retirement_cashflow_v5_1.csv', headers, rows);
+  const headers = ['年份','年齡','年初資產','年底資產','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額','通膨','組合報酬','股票報酬','債券報酬','Freeze'];
+  const rows = currentSim.sample.map(r => [r.year,r.age,Math.round(r.beginAssets),Math.round(r.assets),Math.round(r.living),Math.round(r.loanPayment),Math.round(r.totalSpending),r.withdrawalRate.toFixed(2),Math.round(r.investmentReturn),Math.round(r.contribution),Math.round(r.loanBalance),r.inflation?.toFixed?.(2) ?? '',r.ret?.toFixed?.(2) ?? '',r.stockRet?.toFixed?.(2) ?? '',r.bondRet?.toFixed?.(2) ?? '',r.freeze ? 'Y':'N']);
+  downloadCsv('retirement_cashflow_v5_2.csv', headers, rows);
 }
 function exportDecisionCsv() {
   if (!currentMatrix) return;
   const headers = ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'];
   const rows = currentMatrix.map((r,i) => [Math.round(netWorthFromInvestable(r.assets)),Math.round(r.assets),r.firstWithdrawalRate.toFixed(2),r.successRate.toFixed(1),r.safemax.toFixed(2),String(r.advice).replace(/^[^\s]+\s*/,''),i===0?'':(currentMatrix[i].successRate-currentMatrix[i-1].successRate).toFixed(1)]);
-  downloadCsv('retirement_decision_matrix_v5_1.csv', headers, rows);
+  downloadCsv('retirement_decision_matrix_v5_2.csv', headers, rows);
 }
 function renderDiagnostics(sim, matrix) {
   const first = sim.sample[0];
@@ -194,7 +198,7 @@ function renderNotes(){
   $('model-notes').innerHTML=`
   <div class="note-item"><b>🧭 市場模式：${mode}</b><br>可切換 Historical / Worst / Regime / Extreme。預設 Regime 用牛市、熊市、復甦與高通膨狀態交替，避免純常態 Monte Carlo 過度產生不合理連續崩盤。</div>
   <div class="note-item"><b>💸 支出策略：${strat}</b><br>Spending Smile 預設：生活費不是每年完整跟 CPI 上調；退休前 10 年最多按 1.2% 小幅增加，中期可能持平或下降，晚年再預留醫療支出上升空間。若啟用 Freeze，符合條件時該年生活費不調升。</div>
-  <div class="note-item"><b>🛡️ Dynamic COLA Freeze</b><br>可選 Freeze 條件：寬鬆＝通膨高、報酬差、提領率高任一觸發；平衡＝高通膨且負報酬，或提領率過高；嚴格＝只有提領率過高才暫停調升生活費。</div>
+  <div class="note-item"><b>🛡️ Dynamic COLA Freeze</b><br>可自訂門檻：通膨率、股票報酬跌幅、債券報酬跌幅與提領率門檻。寬鬆＝任一條件觸發；平衡＝高通膨且股/債其中一項跌破門檻，或提領率過高；嚴格＝只有提領率過高才暫停調升生活費。</div>
   <div class="note-item"><b>📈 股票配置</b><br>股票 65% 預設拆成：00631L 20%、VOO/VTI/VXUS 合計 60%、SOXX 20%。整體資產約為 00631L 13%、SOXX 13%、美國/全球核心 ETF 39%。</div>`;
 }
 function render(){
@@ -230,6 +234,11 @@ async function init(){
   // v5.1 changes default living expense from 600萬 to 500萬.
   // If an older saved profile still has the old untouched default 600萬, migrate it once.
   if (!saved?.version && state.annualLivingExpense === 6000000) state.annualLivingExpense = assumptions.annualLivingExpense;
+  // v5.2 fallback for older saved profiles.
+  state.dynamicColaInflationThreshold ??= assumptions.dynamicColaInflationThreshold ?? 5;
+  state.dynamicColaStockDrawdownThreshold ??= assumptions.dynamicColaStockDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
+  state.dynamicColaBondDrawdownThreshold ??= assumptions.dynamicColaBondDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
+  state.dynamicColaWithdrawalThreshold ??= assumptions.dynamicColaWithdrawalThreshold ?? 4.5;
   loans=loanData; portfolio = saved?.portfolio || port; scenarios=scen;
   setupControls(); render();
   $('save-btn').onclick=()=>{ saveState({version: APP_VERSION, state, portfolio}); showSaveModal(); };
@@ -238,6 +247,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.1.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.2.0').catch(()=>{});
 }
 init();
