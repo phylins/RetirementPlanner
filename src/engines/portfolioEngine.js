@@ -29,10 +29,23 @@ export function portfolioStats(portfolio) {
   let variance = 0;
   for (const a of assets) for (const b of assets) variance += a.weight*b.weight*(a.vol/100)*(b.vol/100)*corr(a,b);
   const vol = Math.sqrt(Math.max(0, variance))*100;
-  const riskContrib = assets.map(a => ({ ticker:a.ticker, name:a.name, description:a.description, weight:a.weight*100, riskShare: (a.weight * a.vol) })).sort((a,b)=>b.riskShare-a.riskShare);
-  const riskTotal = riskContrib.reduce((s,a)=>s+a.riskShare,0)||1;
-  riskContrib.forEach(x=>x.riskShare = x.riskShare/riskTotal*100);
-  return { assets, cagr, vol, sharpe: (cagr-2)/Math.max(vol,0.1), riskContrib };
+  const cagrContrib = assets.map(a => ({
+    ticker: a.ticker, name: a.name, description: a.description,
+    weight: a.weight * 100, contribution: a.weight * a.cagr
+  })).sort((a,b)=>b.contribution-a.contribution);
+
+  const volProxy = assets.map(a => ({
+    ticker:a.ticker, name:a.name, description:a.description, weight:a.weight*100, raw: (a.weight * a.vol)
+  })).sort((a,b)=>b.raw-a.raw);
+  const riskTotal = volProxy.reduce((s,a)=>s+a.raw,0)||1;
+  const riskContrib = volProxy.map(x => ({ ...x, riskShare: x.raw/riskTotal*100 }));
+
+  const sharpeContrib = assets.map(a => ({
+    ticker: a.ticker, name: a.name, description: a.description, weight: a.weight * 100,
+    contribution: (a.weight * (a.cagr - 2)) / Math.max(vol, 0.1)
+  })).sort((a,b)=>b.contribution-a.contribution);
+
+  return { assets, cagr, vol, sharpe: (cagr-2)/Math.max(vol,0.1), riskContrib, cagrContrib, sharpeContrib };
 }
 export function rebalanceTopLevel(portfolio, stock, bond, cash) {
   portfolio.topLevel.stock = stock; portfolio.topLevel.bond = bond; portfolio.topLevel.cash = cash;

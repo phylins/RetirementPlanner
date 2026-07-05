@@ -12,6 +12,8 @@ const modes = [
 ];
 const strategies = [['classic','Classic COLA'],['dynamic','Dynamic COLA'],['smile','Spending Smile'],['guardrails','Guardrails']];
 let state, loans, scenarios, portfolio;
+function netWorthFromInvestable(v){ return Number(v || 0) - Number(state?.netWorthGap || 0); }
+function investableFromNetWorth(v){ return Number(v || 0) + Number(state?.netWorthGap || 0); }
 async function loadJson(path){ return fetch(path).then(r=>r.json()); }
 function control(id, label, min, max, step, value, onChange){
   const node=$(id); node.innerHTML='';
@@ -37,7 +39,7 @@ function normalizeGroup(group, changedKey){
   if(target) group[target].weight=Number((group[target].weight+diff).toFixed(1));
 }
 function setupControls(){
-  control('input-investable','2026 可投資資產',120000000,300000000,1000000,state.investableAssets,v=>state.investableAssets=v);
+  control('input-investable','2026 可投資資產',120000000,350000000,1000000,state.investableAssets,v=>state.investableAssets=v);
   control('input-living','年度生活費',3000000,15000000,100000,state.annualLivingExpense,v=>state.annualLivingExpense=v);
   control('input-years','退休年限',20,60,1,state.retirementYears,v=>state.retirementYears=v);
   control('input-cape','Shiller CAPE',15,50,1,state.cape,v=>state.cape=v);
@@ -49,7 +51,14 @@ function setupControls(){
   const ms=$('mode-select'); ms.innerHTML=modes.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); ms.value=state.marketMode; ms.onchange=()=>{state.marketMode=ms.value;render();};
   const ss=$('spending-select'); ss.innerHTML=strategies.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); ss.value=state.spendingStrategy; ss.onchange=()=>{state.spendingStrategy=ss.value;render();};
   $('dynamic-cola').checked=state.dynamicCola; $('dynamic-cola').onchange=e=>{state.dynamicCola=e.target.checked;render();};
-  const sb=$('scenario-buttons'); sb.innerHTML=''; scenarios.forEach(s=>{ const b=document.createElement('button'); b.textContent=twMoney(s,1); b.onclick=()=>{ state.investableAssets=s; setupControls(); render(); }; sb.append(b); });
+  const sb=$('scenario-buttons'); sb.innerHTML=''; scenarios.forEach(netWorth=>{
+    const investable = investableFromNetWorth(netWorth);
+    const b=document.createElement('button');
+    b.innerHTML=`<b>${twMoney(netWorth,1)}</b><small>投資 ${twMoney(investable,1)}</small>`;
+    b.dataset.netWorth=String(netWorth);
+    b.onclick=()=>{ state.investableAssets=investable; setupControls(); render(); };
+    sb.append(b);
+  });
   const eq=$('equity-controls'); eq.innerHTML=''; Object.keys(portfolio.equity).forEach(k=>pctControl(eq,k,k,portfolio.equity,80, changed=>normalizeGroup(portfolio.equity, changed)));
   const bd=$('bond-controls'); bd.innerHTML=''; Object.keys(portfolio.bond).forEach(k=>pctControl(bd,k,k,portfolio.bond,80, changed=>normalizeGroup(portfolio.bond, changed)));
 }
@@ -63,7 +72,15 @@ function renderKpis(sim, loanRows){
 function table(node, headers, rows){ node.innerHTML=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`; }
 function renderTables(sim, matrix, marginal){
   table($('cashflow-table'), ['年份','年齡','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額'], sim.sample.map(r=>`<tr><td>${r.year}</td><td>${r.age}</td><td>${twMoney(r.living)}</td><td>${twMoney(r.loanPayment)}</td><td>${twMoney(r.totalSpending)}</td><td>${pct(r.withdrawalRate,2)}</td><td>${twMoney(r.investmentReturn)}</td><td>${twMoney(r.contribution)}</td><td>${twWan(r.loanBalance)}</td></tr>`));
-  table($('decision-table'), ['可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'], matrix.map((r,i)=>`<tr><td>${twMoney(r.assets,1)}</td><td>${pct(r.firstWithdrawalRate,2)}</td><td>${pct(r.successRate,1)}</td><td>${pct(r.safemax,2)}</td><td>${r.advice}</td><td>${i===0?'—':pct(matrix[i].successRate-matrix[i-1].successRate,1)}</td></tr>`));
+  table($('decision-table'), ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'], matrix.map((r,i)=>`<tr><td>${twMoney(netWorthFromInvestable(r.assets),1)}</td><td>${twMoney(r.assets,1)}</td><td>${pct(r.firstWithdrawalRate,2)}</td><td>${pct(r.successRate,1)}</td><td>${pct(r.safemax,2)}</td><td>${r.advice}</td><td>${i===0?'—':pct(matrix[i].successRate-matrix[i-1].successRate,1)}</td></tr>`));
+}
+function contributionRows(title, rows, valueKey, formatter, hint){
+  return `<h4>${title}</h4><div class="contrib-list">${rows.map(r=>`
+    <div class="contrib-row" title="${r.description || ''}">
+      <span><b>${r.ticker}</b><em>${r.name || ''}</em></span>
+      <div class="mini-bar"><i style="width:${Math.max(2, Math.min(100, Math.abs(r[valueKey]) / Math.max(...rows.map(x=>Math.abs(x[valueKey])), 0.01) * 100))}%"></i></div>
+      <strong>${formatter(r[valueKey])}</strong>
+    </div>`).join('')}</div><p class="contrib-hint">${hint}</p>`;
 }
 function renderPortfolio(stats){
   const assetRows = stats.assets.map(a => `
@@ -74,8 +91,9 @@ function renderPortfolio(stats){
   $('portfolio-summary').innerHTML=`
     <div class="portfolio-stat"><div><span>CAGR</span><b>${pct(stats.cagr,1)}</b></div><div><span>Volatility</span><b>${pct(stats.vol,1)}</b></div><div><span>Sharpe</span><b>${stats.sharpe.toFixed(2)}</b></div></div>
     <h4>標的與目標市場</h4><div class="asset-list">${assetRows}</div>
-    <h4>風險貢獻</h4><div id="risk-bars"></div>`;
-  sparkBars(document.getElementById('risk-bars'), stats.riskContrib);
+    ${contributionRows('CAGR 貢獻', stats.cagrContrib, 'contribution', v=>pct(v,2), '每檔標的對整體年化報酬的加權貢獻。')}
+    ${contributionRows('波動 / 風險貢獻', stats.riskContrib, 'riskShare', v=>pct(v,1), '以權重與波動率估算的風險占比，數字越高代表越影響組合波動。')}
+    ${contributionRows('Sharpe 貢獻', stats.sharpeContrib, 'contribution', v=>v.toFixed(3), '以超額報酬除以組合波動率估算的貢獻，正值代表提高風險調整後報酬。')}`;
 }
 function renderNotes(){
   const mode=modes.find(m=>m[0]===state.marketMode)?.[1]; const strat=strategies.find(s=>s[0]===state.spendingStrategy)?.[1];
@@ -86,14 +104,14 @@ function renderNotes(){
   <div class="note-item"><b>📈 股票配置</b><br>股票 65% 預設拆成：00631L 20%、VOO/VTI/VXUS 合計 60%、SOXX 20%。整體資產約為 00631L 13%、SOXX 13%、美國/全球核心 ETF 39%。</div>`;
 }
 function render(){
-  [...document.querySelectorAll('#scenario-buttons button')].forEach(b=>b.classList.toggle('active', b.textContent===twMoney(state.investableAssets,1)));
-  const sim=simulate(state,loans,portfolio,700); const loanRows=annualLoanSchedule(loans,state.retirementYears,state.startYear); const timing=timingOptimizer(state,loans,portfolio); const matrix=decisionMatrix(state,loans,portfolio,scenarios);
+  [...document.querySelectorAll('#scenario-buttons button')].forEach(b=>{ const n=Number(b.dataset.netWorth||0); b.classList.toggle('active', Math.abs(n-netWorthFromInvestable(state.investableAssets))<10000000); });
+  const sim=simulate(state,loans,portfolio,700); const loanRows=annualLoanSchedule(loans,state.retirementYears,state.startYear); const timing=timingOptimizer(state,loans,portfolio); const matrix=decisionMatrix(state,loans,portfolio,scenarios.map(investableFromNetWorth));
   renderKpis(sim, loanRows); renderTables(sim,matrix,[]); renderPortfolio(sim.stats); renderNotes();
   requestAnimationFrame(() => {
-    lineChart($('asset-chart'),{data:sim.percentiles,series:[{key:'p10',label:'P10 悲觀',className:'red'},{key:'p50',label:'P50 中位數',className:'blue'},{key:'p60',label:'P60 樂觀',className:'green'}],height:260});
-    barLineChart($('expense-chart'),{data:sim.sample,bars:[{key:'living',label:'生活費',className:'green'},{key:'loanPayment',label:'貸款',className:'amber'}],lines:[{key:'totalSpending',label:'總支出',className:'blue'}],height:260});
-    lineChart($('loan-chart'),{data:loanRows.map(r=>({...r,loanBalanceWan:r.loanBalance/10000})),series:[{key:'loanBalanceWan',label:'貸款餘額（萬）',className:'amber'}],yFormat:v=>`${Math.round(v).toLocaleString()}萬`,height:260});
-    lineChart($('timing-chart'),{data:timing,series:[{key:'successRate',label:'成功率（左軸）',className:'green'}],yFormat:v=>pct(v,0),y2Series:{key:'firstWithdrawalRate',label:'第一年提領率（右軸）',className:'blue'},y2Format:v=>pct(v,1),height:260});
+    lineChart($('asset-chart'),{data:sim.percentiles,series:[{key:'p10',label:'P10 悲觀',className:'red'},{key:'p50',label:'P50 中位數',className:'blue'},{key:'p60',label:'P60 樂觀',className:'green'}],height:260,yMin:0,yMax:1200000000,yStep:200000000});
+    barLineChart($('expense-chart'),{data:sim.sample,bars:[{key:'living',label:'生活費',className:'green'},{key:'loanPayment',label:'貸款',className:'amber'}],lines:[{key:'totalSpending',label:'總支出',className:'blue'}],height:260,yMin:0,yMax:12000000,yStep:2000000});
+    lineChart($('loan-chart'),{data:loanRows.map(r=>({...r,loanBalanceWan:r.loanBalance/10000})),series:[{key:'loanBalanceWan',label:'貸款餘額（萬）',className:'amber'}],yFormat:v=>`${Math.round(v).toLocaleString()}萬`,height:260,yMin:0,yMax:6000,yStep:1000});
+    lineChart($('timing-chart'),{data:timing,series:[{key:'successRate',label:'成功率（左軸）',className:'green'}],yFormat:v=>pct(v,0),yMin:0,yMax:100,yStep:20,y2Series:{key:'firstWithdrawalRate',label:'第一年提領率（右軸）',className:'blue'},y2Format:v=>pct(v,1),y2Min:0,y2Max:10,y2Step:2,height:260});
   });
 }
 function showSaveModal(){
@@ -118,6 +136,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.4.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.5.0').catch(()=>{});
 }
 init();
