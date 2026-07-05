@@ -1,16 +1,140 @@
-:root{--bg:#f6f8fb;--card:#fff;--line:#dce3ee;--text:#102033;--muted:#607089;--blue:#165dff;--green:#13a65b;--red:#d64545;--amber:#d88a00;--shadow:0 10px 28px rgba(30,45,75,.08)}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Arial,sans-serif;background:var(--bg);color:var(--text)}
-.app-shell{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:100vh;gap:16px;padding:16px}.sidebar{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow);height:calc(100vh - 32px);overflow:auto}.brand{display:flex;gap:12px;align-items:center;padding:6px 4px 14px;border-bottom:1px solid var(--line)}.logo{width:42px;height:42px;border-radius:12px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800}.brand h1{font-size:18px;margin:0}.brand p{font-size:12px;color:var(--muted);margin:2px 0 0}.control-block{padding:14px 2px;border-bottom:1px solid var(--line)}.control-block h2{font-size:15px;margin:0 0 10px}.field{display:grid;gap:6px;margin:10px 0}.field span,.toggle span{font-size:12px;color:var(--muted);font-weight:700}.control-row{display:grid;grid-template-columns:1fr 108px;gap:8px;align-items:center;margin:8px 0}.control-row label{font-size:12px;color:var(--muted);grid-column:1/-1;font-weight:700}.control-row input[type=range]{width:100%}.control-row input[type=text],.field select{width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 9px;background:#fbfdff;color:var(--text);font-weight:700}.toggle{display:flex;gap:8px;align-items:center;margin-top:10px}.scenario-buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.scenario-buttons button{border:1px solid #c9d5e6;background:#f8fbff;border-radius:10px;padding:8px 4px;font-weight:800;cursor:pointer}.scenario-buttons button.active{background:#e9f0ff;border-color:#7fa7ff;color:#1247c0}.primary{border:0;background:var(--blue);color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer}.main{min-width:0;display:grid;gap:14px}.topbar{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 18px;box-shadow:var(--shadow)}.topbar h2{margin:0;font-size:24px}.topbar p{margin:4px 0 0;color:var(--muted);font-size:14px}.kpi-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px}.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow)}.kpi .label{font-size:12px;color:var(--muted);font-weight:800}.kpi .value{font-size:24px;font-weight:900;margin-top:5px}.kpi .sub{font-size:12px;color:var(--muted);margin-top:4px}.chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.decision-grid,.detail-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(340px,.8fr);gap:14px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow);min-width:0}.card.wide{min-width:0}.card-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px}.card h3{margin:0;font-size:18px}.card p{margin:0;color:var(--muted);font-size:13px}.chart-svg{width:100%;height:auto;display:block;overflow:visible}.axis{stroke:#8e9cb1;stroke-width:1.1}.grid{stroke:#edf1f7;stroke-width:1}.axis-label{font-size:12px;fill:#43536b;font-weight:700}.axis-sub-label{font-size:11px;fill:#7b8799}.legend-text{font-size:13px;fill:#23334a;font-weight:800}.line{fill:none;stroke:var(--blue);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}.line.green{stroke:var(--green)}.line.red{stroke:var(--red)}.line.blue{stroke:var(--blue)}.line.amber{stroke:var(--amber)}.line.gray{stroke:#637083}.bar{fill:#b9cdf5}.bar.green{fill:#bdebd1}.bar.amber{fill:#ffe0a8}.bar.red{fill:#ffc3c3}.table-wrap{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:14px}.table-wrap.tall{max-height:520px}table{width:100%;border-collapse:collapse;font-size:13px}th{position:sticky;top:0;background:#f0f4fa;z-index:2;text-align:right;color:#314158;font-size:12px}td{text-align:right}th,td{padding:9px 10px;border-bottom:1px solid #edf1f7;white-space:nowrap}th:first-child,td:first-child{text-align:left}.model-notes{font-size:15px;line-height:1.62;color:#26364d}.note-item{padding:12px;border:1px solid #e4eaf4;border-radius:14px;background:#fbfdff;margin-bottom:10px}.note-item b{font-size:15px}.portfolio-stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.portfolio-stat div{background:#f7faff;border:1px solid #e3eafb;border-radius:12px;padding:10px}.portfolio-stat span{display:block;font-size:12px;color:var(--muted);font-weight:800}.portfolio-stat b{font-size:18px}.risk-row{display:grid;grid-template-columns:58px 1fr 56px;gap:8px;align-items:center;font-size:13px;margin:8px 0}.risk-row div{height:10px;background:#edf2f8;border-radius:99px;overflow:hidden}.risk-row i{display:block;height:100%;background:#8fb1ff;border-radius:99px}.risk-row b{text-align:right}.status-good{color:var(--green)}.status-warn{color:var(--amber)}.status-bad{color:var(--red)}
-@media(min-width:2600px){.app-shell{grid-template-columns:320px minmax(0,1fr);gap:18px;padding:18px}.kpi-grid{grid-template-columns:repeat(8,1fr)}.card{padding:16px}.chart-grid{grid-template-columns:repeat(4,1fr)}.decision-grid,.detail-grid{grid-template-columns:2fr 1fr}.axis-label{font-size:13px}.axis-sub-label{font-size:12px}.legend-text{font-size:14px}}
-@media(max-width:1300px){.app-shell{grid-template-columns:1fr}.sidebar{height:auto}.kpi-grid{grid-template-columns:repeat(2,1fr)}.chart-grid,.decision-grid,.detail-grid{grid-template-columns:1fr}}
-.chart-error{padding:24px;color:#b42318;background:#fff3f3;border:1px solid #ffd6d6;border-radius:12px;font-weight:700}
-.asset-list{display:grid;gap:8px;margin-bottom:14px;max-height:260px;overflow:auto;padding-right:4px}.asset-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;border:1px solid #e7edf6;background:#fbfdff;border-radius:12px;padding:10px}.asset-row b{font-size:14px;color:#102033}.asset-row span{display:block;font-size:13px;font-weight:800;color:#2d3d55;margin-top:2px}.asset-row small{display:block;font-size:12px;line-height:1.35;color:#66758b;margin-top:3px}.asset-row strong{font-size:14px;color:#165dff}.risk-row{grid-template-columns:minmax(150px,1fr) 1.1fr 56px}.risk-row span{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card>div[id$='-chart']:empty::after{content:'圖表載入中，若長時間空白請重新整理頁面';display:block;padding:30px;color:#607089;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:14px;text-align:center;font-weight:700}
-.asset-control label{display:block;line-height:1.35}.asset-control label b{font-size:13px;color:#102033;margin-right:6px}.asset-control .asset-name{display:inline;font-size:12px;font-weight:800;color:#334155}.asset-control small{display:block;font-size:11px;font-weight:500;color:#64748b;margin-top:2px;line-height:1.35}.control-block h2{font-size:16px}.chart-svg{min-height:260px}.card>div[id$='-chart']{min-height:260px}
+# Retirement Planner v3.4 PWA
 
-/* v3.3 save-success modal */
-.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.32);display:grid;place-items:center;z-index:9999;padding:24px}
-.modal-backdrop[hidden]{display:none}
-.modal-card{width:min(520px,calc(100vw - 48px));background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 80px rgba(15,23,42,.22);padding:24px;display:grid;grid-template-columns:54px 1fr;gap:16px;align-items:start;animation:modalPop .18s ease-out}
-.modal-icon{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#e8f8ef;color:#13a65b;font-size:32px;font-weight:900}
-.modal-card h3{margin:2px 0 6px;font-size:24px;color:#102033}.modal-card p{margin:0;color:#607089;font-size:15px;line-height:1.55}.modal-close{grid-column:1/-1;justify-self:end;border:0;background:var(--blue);color:#fff;border-radius:12px;padding:10px 18px;font-weight:800;cursor:pointer}.modal-close:focus{outline:3px solid rgba(22,93,255,.25)}
-@keyframes modalPop{from{transform:translateY(8px) scale(.98);opacity:.6}to{transform:none;opacity:1}}
+這是一個可維護的退休規劃 PWA 專案，支援本機執行、GitHub Pages 部署與離線使用。
+
+## 功能
+
+- 2026 起始可投資資產：可用拉桿與數值輸入調整，上限 3 億。
+- 年收入：我的年收入、家人年收入，依簡化有效稅表估算稅後收入與年度新增投資。
+- 六筆貸款逐年攤還：顯示年度還款與年底剩餘本金。
+- 股債現金配置：預設 65 / 30 / 5。
+- 股票內部配置：00631L 20%、VOO 40%、VTI 10%、VXUS 10%、SOXX 20%。
+- 債券配置：IEF / TLT / VCIT / SGOV。
+- 四種市場模式：Historical Backtest、Worst Historical、Regime Monte Carlo、Extreme Stress Test。
+- 支出策略：Classic COLA、Dynamic COLA、Spending Smile、Guardrails。
+- Dynamic COLA Freeze：遇到高通膨、組合下跌或提領率過高時，該年生活費不跟通膨上調。
+- 資產曲線：P10 / P50 / P60。
+- 退休時間最佳化：雙 Y 軸，左軸成功率，右軸第一年提領率。
+- 退休決策矩陣：1.8 億到 3.0 億，每 0.2 億一跳。
+- PWA：可安裝、可離線、設定可存到本機瀏覽器。
+
+## 本機使用方式
+
+### 方法 A：直接開啟
+
+有些瀏覽器可以直接雙擊 `index.html` 開啟，但 Service Worker 與部分模組功能可能受限制。
+
+### 方法 B：用 Python 開本機伺服器（建議）
+
+Windows / Mac / Linux 皆可：
+
+```bash
+python -m http.server 8000
+```
+
+或：
+
+```bash
+python3 -m http.server 8000
+```
+
+然後開瀏覽器：
+
+```text
+http://localhost:8000
+```
+
+## GitHub Pages 部署
+
+1. 建立 GitHub repository，例如 `RetirementPlanner`。
+2. 將本專案所有檔案上傳到 repo 根目錄。
+3. 到 GitHub repo：`Settings` → `Pages`。
+4. Source 選 `Deploy from a branch`。
+5. Branch 選 `main`，資料夾選 `/root`。
+6. 等待 1 到 3 分鐘，GitHub 會給你網址：
+
+```text
+https://你的帳號.github.io/RetirementPlanner/
+```
+
+## 安裝成 App
+
+部署到 GitHub Pages 後：
+
+- Windows / Chrome：網址列右側會出現「安裝」圖示。
+- Mac / Chrome：可安裝成桌面 App。
+- iPhone Safari：分享 → 加入主畫面。
+- Android Chrome：選單 → 安裝應用程式。
+
+## 專案結構
+
+```text
+RetirementPlanner/
+├── index.html
+├── sw.js
+├── package.json
+├── README.md
+├── public/
+│   ├── manifest.json
+│   └── icons/
+├── data/
+│   ├── assumptions.json
+│   ├── loans.json
+│   ├── portfolio.json
+│   └── scenarios.json
+└── src/
+    ├── app.js
+    ├── styles.css
+    ├── components/
+    │   └── chart.js
+    ├── engines/
+    │   ├── loanEngine.js
+    │   ├── portfolioEngine.js
+    │   ├── withdrawalEngine.js
+    │   ├── simulationEngine.js
+    │   └── optimizer.js
+    └── utils/
+        ├── format.js
+        └── storage.js
+```
+
+## 後續建議開發
+
+- v3.2：接入真實歷史報酬與 CPI 資料。
+- v3.2：把 Monte Carlo 改成 Web Worker，提升速度。
+- v3.4：加入完整 Scenario 儲存與比較。
+- v4.0：串接 CAPE、VIX、10Y Yield 等市場資料。
+
+
+## v3.4 更新重點
+
+- 按下「儲存設定」後，改為顯示白底彈出視窗「設定已儲存」。
+- `index.html` / `app.js` / `styles.css` / `sw.js` 版本升級至 v3.4，降低 GitHub Pages 與 PWA 快取抓舊版的機率。
+- 可按「知道了」、點背景或按 Esc 關閉儲存成功視窗。
+
+## v3.2 更新重點
+
+- 修正多張 SVG 圖表空白或未渲染的問題，加入 chart error fallback。
+- 年度支出、貸款餘額、退休時間最佳化圖表改用更穩定的原生 SVG renderer。
+- Portfolio Engine 加入中文標的說明：00631L、VOO、VTI、VXUS、SOXX、IEF、TLT、VCIT、SGOV、現金。
+- PWA cache 版本升級到 v3.4；若瀏覽器仍顯示舊版，請按 Ctrl+F5 或重新安裝 PWA。
+
+
+## v3.2 更新
+- 修正 PWA/Service Worker 快取造成的舊版 JS/CSS 被沿用問題。
+- 圖表改成 requestAnimationFrame 後渲染，避免容器寬度尚未完成計算時空白。
+- 左側 ETF 控制項加入中文標的名稱與市場/產業說明。
+- Service Worker 改為 JS/CSS/data network-first，更新 GitHub Pages 後更容易抓到新版。
+
+## v3.4 緊急修正版：根目錄部署檢查
+
+如果網站打開只看到 `export const clamp...`，代表 GitHub repo 根目錄的 `index.html` 被錯誤覆蓋成 `src/utils/format.js` 的內容。
+
+正確做法：
+1. 解壓縮本 ZIP。
+2. 打開解壓後的資料夾，應直接看到 `index.html`, `sw.js`, `src/`, `data/`, `public/`。
+3. 將這些檔案與資料夾「直接覆蓋」到 GitHub repo 根目錄。
+4. 到 GitHub repo 點開根目錄 `index.html`，第一行應該是 `<!-- Retirement Planner v3.4 root index... -->`，第二行是 `<!doctype html>`。
+5. Commit 後等待 GitHub Pages deploy 成功。
+6. 開網址後按 `Ctrl + F5`；必要時清除 Service Worker。
+
