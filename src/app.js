@@ -8,7 +8,11 @@ import { saveState, loadState } from './utils/storage.js';
 
 const $ = id => document.getElementById(id);
 const modes = [
-  ['historical','Historical Backtest'],['worst','Worst Historical'],['regime','Regime Monte Carlo'],['extreme','Extreme Stress Test']
+  ['balancedMarkov','Balanced Markov Regime'],
+  ['historical','Historical Backtest'],
+  ['worst','Worst Historical'],
+  ['regime','Conservative Regime Monte Carlo'],
+  ['extreme','Extreme Stress Test']
 ];
 const strategies = [['classic','Classic COLA'],['dynamic','Dynamic COLA'],['smile','Spending Smile'],['guardrails','Guardrails']];
 const freezeRules = [
@@ -19,7 +23,7 @@ const freezeRules = [
 let state, loans, scenarios, portfolio;
 const SIM_RUNS = 360;
 const SIM_SEED = 202600;
-const APP_VERSION = '5.3.0';
+const APP_VERSION = '5.5.0';
 let contributionSort = { key: 'riskShare', dir: 'desc' };
 let currentSim = null;
 let currentMatrix = null;
@@ -216,13 +220,13 @@ function exportCashflowCsv() {
   if (!currentSim) return;
   const headers = ['年份','年齡','年初資產','年底資產','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額','通膨','組合報酬','股票報酬','債券報酬','Freeze'];
   const rows = currentSim.sample.map(r => [r.year,r.age,Math.round(r.beginAssets),Math.round(r.assets),Math.round(r.living),Math.round(r.loanPayment),Math.round(r.totalSpending),r.withdrawalRate.toFixed(2),Math.round(r.investmentReturn),Math.round(r.contribution),Math.round(r.loanBalance),r.inflation?.toFixed?.(2) ?? '',r.ret?.toFixed?.(2) ?? '',r.stockRet?.toFixed?.(2) ?? '',r.bondRet?.toFixed?.(2) ?? '',r.freeze ? 'Y':'N']);
-  downloadCsv('retirement_cashflow_v5_3.csv', headers, rows);
+  downloadCsv('retirement_cashflow_v5_5.csv', headers, rows);
 }
 function exportDecisionCsv() {
   if (!currentMatrix) return;
   const headers = ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'];
   const rows = currentMatrix.map((r,i) => [Math.round(netWorthFromInvestable(r.assets)),Math.round(r.assets),r.firstWithdrawalRate.toFixed(2),r.successRate.toFixed(1),r.safemax.toFixed(2),String(r.advice).replace(/^[^\s]+\s*/,''),i===0?'':(currentMatrix[i].successRate-currentMatrix[i-1].successRate).toFixed(1)]);
-  downloadCsv('retirement_decision_matrix_v5_3.csv', headers, rows);
+  downloadCsv('retirement_decision_matrix_v5_5.csv', headers, rows);
 }
 function renderDiagnostics(sim, matrix) {
   const first = sim.sample[0];
@@ -246,7 +250,7 @@ function renderDiagnostics(sim, matrix) {
 function renderNotes(){
   const mode=modes.find(m=>m[0]===state.marketMode)?.[1]; const strat=strategies.find(s=>s[0]===state.spendingStrategy)?.[1];
   $('model-notes').innerHTML=`
-  <div class="note-item"><b>🧭 市場模式：${mode}</b><br>可切換 Historical / Worst / Regime / Extreme。預設 Regime 用牛市、熊市、復甦與高通膨狀態交替，避免純常態 Monte Carlo 過度產生不合理連續崩盤。</div>
+  <div class="note-item"><b>🧭 市場模式：${mode}</b><br>第一選項為 Balanced Markov Regime：用市場狀態轉移模擬牛市、修正、熊市、危機、復甦與高通膨，避免每年獨立亂抽造成過多不合理連續崩盤。第二選項為 Historical Backtest，作為 Bengen 式歷史序列基準。</div>
   <div class="note-item"><b>💸 支出策略：${strat}</b><br>Spending Smile 預設：生活費不是每年完整跟 CPI 上調；退休前 10 年最多按 1.2% 小幅增加，中期可能持平或下降，晚年再預留醫療支出上升空間。若啟用 Freeze，符合條件時該年生活費不調升。</div>
   <div class="note-item"><b>🛡️ Dynamic COLA Freeze</b><br>可自訂門檻：通膨率、股票報酬跌幅、債券報酬跌幅與提領率門檻。寬鬆＝任一條件觸發；平衡＝高通膨且股/債其中一項跌破門檻，或提領率過高；嚴格＝只有提領率過高才暫停調升生活費。</div>
   <div class="note-item"><b>📈 股票配置</b><br>股票 65% 預設拆成：00631L 20%、VOO/VTI/VXUS 合計 60%、SOXX 20%。整體資產約為 00631L 13%、SOXX 13%、美國/全球核心 ETF 39%。</div>`;
@@ -284,7 +288,7 @@ async function init(){
   // v5.1 changes default living expense from 600萬 to 500萬.
   // If an older saved profile still has the old untouched default 600萬, migrate it once.
   if (!saved?.version && state.annualLivingExpense === 6000000) state.annualLivingExpense = assumptions.annualLivingExpense;
-  // v5.3 fallback for older saved profiles.
+  // v5.5 fallback for older saved profiles.
   state.dynamicColaInflationThreshold ??= assumptions.dynamicColaInflationThreshold ?? 5;
   state.dynamicColaStockDrawdownThreshold ??= assumptions.dynamicColaStockDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
   state.dynamicColaBondDrawdownThreshold ??= assumptions.dynamicColaBondDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
@@ -297,6 +301,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.3.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.5.0').catch(()=>{});
 }
 init();

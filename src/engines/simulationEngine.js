@@ -25,6 +25,64 @@ function combineReturns(stats, stockRet, bondRet, cashRet = 2.0) {
   const cashWeight = stats.assets.filter(a => a.className === '現金').reduce((s, a) => s + a.weight, 0);
   return stockWeight * stockRet + bondWeight * bondRet + cashWeight * cashRet;
 }
+
+function pickTransition(rand, current, matrix) {
+  const choices = matrix[current] || matrix.Normal;
+  const r = rand();
+  let acc = 0;
+  for (const [state, prob] of choices) {
+    acc += prob;
+    if (r <= acc) return state;
+  }
+  return choices[choices.length - 1][0];
+}
+function balancedMarkovReturn(rand, stats, y, currentState = 'Normal') {
+  const matrix = {
+    Normal: [['Bull',0.38],['Normal',0.36],['Correction',0.10],['Bear',0.05],['Recovery',0.06],['HighInflation',0.05]],
+    Bull: [['Bull',0.70],['Normal',0.18],['Correction',0.08],['Bear',0.02],['HighInflation',0.02]],
+    Correction: [['Recovery',0.35],['Normal',0.30],['Bull',0.15],['Bear',0.15],['HighInflation',0.05]],
+    Bear: [['Recovery',0.45],['Bear',0.20],['Normal',0.20],['Crisis',0.05],['HighInflation',0.10]],
+    Crisis: [['Recovery',0.60],['Bear',0.20],['Normal',0.15],['HighInflation',0.05]],
+    Recovery: [['Bull',0.50],['Normal',0.30],['Recovery',0.15],['HighInflation',0.05]],
+    HighInflation: [['Normal',0.45],['Recovery',0.20],['HighInflation',0.15],['Bear',0.10],['Bull',0.10]]
+  };
+  const regime = y === 0 ? currentState : pickTransition(rand, currentState, matrix);
+  const stock = classProfile(stats, '股票', 9.0, 22.0);
+  const bond = classProfile(stats, '債券', 3.8, 8.0);
+  let stockMean = stock.cagr, stockVol = stock.vol * 0.75;
+  let bondMean = bond.cagr, bondVol = bond.vol * 0.75;
+  let inf = 1.8 + rand() * 1.2;
+  if (regime === 'Bull') {
+    stockMean = stock.cagr + 3.0; stockVol = stock.vol * 0.70;
+    bondMean = bond.cagr + 0.2; bondVol = bond.vol * 0.65;
+    inf = 1.5 + rand() * 1.3;
+  } else if (regime === 'Correction') {
+    stockMean = -8.0; stockVol = Math.min(stock.vol * 0.85, 24);
+    bondMean = bond.cagr + 0.8; bondVol = bond.vol * 0.75;
+    inf = 1.0 + rand() * 2.0;
+  } else if (regime === 'Bear') {
+    stockMean = -14.0; stockVol = Math.min(stock.vol * 0.90, 26);
+    bondMean = bond.cagr + 1.2; bondVol = bond.vol * 0.80;
+    inf = 0.5 + rand() * 2.5;
+  } else if (regime === 'Crisis') {
+    stockMean = -28.0; stockVol = Math.min(stock.vol * 0.75, 24);
+    bondMean = bond.cagr + 2.5; bondVol = bond.vol * 0.70;
+    inf = 0.5 + rand() * 2.0;
+  } else if (regime === 'Recovery') {
+    stockMean = stock.cagr + 6.0; stockVol = stock.vol * 0.80;
+    bondMean = bond.cagr; bondVol = bond.vol * 0.70;
+    inf = 1.5 + rand() * 2.0;
+  } else if (regime === 'HighInflation') {
+    stockMean = -2.0; stockVol = Math.min(stock.vol * 0.75, 24);
+    bondMean = -3.0; bondVol = Math.min(bond.vol * 0.80, 12);
+    inf = 4.0 + rand() * 2.5;
+  }
+  const stockRet = stockMean + normal(rand) * stockVol;
+  const bondRet = bondMean + normal(rand) * bondVol;
+  const cashRet = Math.max(0, Math.min(5, inf * 0.55 + 1.2));
+  return { ret: combineReturns(stats, stockRet, bondRet, cashRet), stockRet, bondRet, cashRet, inflation: inf, regime: `Balanced ${regime}`, nextRegime: regime };
+}
+
 function regimeReturn(rand, stats, y) {
   const stock = classProfile(stats, '股票', 9.0, 22.0);
   const bond = classProfile(stats, '債券', 3.8, 8.0);
@@ -71,7 +129,8 @@ function shouldFreezeCola(config, inflation, stockRet, bondRet, withdrawalRateBe
   // balanced: freeze only when high inflation and either stocks or bonds are weak, or withdrawal rate is already too high.
   return (highInflation && (badStock || badBond)) || highWithdrawal;
 }
-function modeReturn(mode, stats, y, rand) {
+function modeReturn(mode, stats, y, rand, markovState) {
+  if (mode === 'balancedMarkov') return balancedMarkovReturn(rand, stats, y, markovState);
   if (mode === 'historical') {
     const stockSeq = [12,-8,22,5,-15,18,9,7,-4,14,3,11,-20,26,15,2];
     const bondSeq = [4,6,2,5,7,3,4,5,6,3,4,5,8,2,3,4];
@@ -107,8 +166,10 @@ export function runSinglePath(config, loans, portfolio, seed = 1234, startDelay 
   let assets = config.investableAssets;
   let living = config.annualLivingExpense;
   const rows = [];
+  let markovState = 'Normal';
   for (let y = 0; y < years + startDelay; y++) {
-    const market = modeReturn(config.marketMode, stats, y, rand);
+    const market = modeReturn(config.marketMode, stats, y, rand, markovState);
+    if (market.nextRegime) markovState = market.nextRegime;
     const loan = loanRows[y] || { loanPayment: 0, loanBalance: 0 };
     const beginAssets = assets;
     const totalSpendingBefore = living + loan.loanPayment;

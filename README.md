@@ -1,8 +1,8 @@
-# Retirement Planner v5.3 PWA
+# Retirement Planner v5.5 PWA
 
-## v5.3 更新重點
+## v5.5 更新重點
 
-- 版本號正式升級為 `v5.3.0`，不再使用 4.x。
+- 版本號正式升級為 `v5.5.0`，不再使用 4.x。
 - 左側控制欄取消內部捲軸，全部欄位跟著主頁面一起捲動。
 - 頁面右上新增版本與最後更新時間，方便確認 GitHub Pages / PWA 是否抓到新版。
 - 新增 CSV 匯出：
@@ -38,7 +38,7 @@ http://localhost:8000
 3. 確認根目錄的 `index.html` 第一行是：
 
 ```html
-<!-- Retirement Planner v5.3 root index...
+<!-- Retirement Planner v5.5 root index...
 ```
 
 4. Commit / Push。
@@ -50,17 +50,17 @@ http://localhost:8000
 如果打開 GitHub Pages 看到 JavaScript 文字而不是網頁，代表 repo 根目錄的 `index.html` 被錯誤覆蓋成其他 JS 檔案。請重新覆蓋本 ZIP 根目錄的 `index.html`。
 
 
-## v5.3 更新
+## v5.5 更新
 
 - 年度生活費預設值改為 NT$500 萬。
 - 年度支出與貸款圖表新增右側 Y 軸，顯示每年通膨率。
 - 年度支出明細新增通膨與 Freeze 欄位，方便檢查生活費是否因通膨或 Dynamic COLA Freeze 調整。
 - 圖表 hover tooltip 會一起顯示通膨率。
 
-注意：如果瀏覽器已經儲存過舊設定，且生活費仍為舊版預設 600 萬，v5.3 會自動遷移成 500 萬；若你曾手動改成其他數字則會保留。
+注意：如果瀏覽器已經儲存過舊設定，且生活費仍為舊版預設 600 萬，v5.5 會自動遷移成 500 萬；若你曾手動改成其他數字則會保留。
 
 
-## v5.3 更新
+## v5.5 更新
 
 - Dynamic COLA Freeze 的觸發門檻可在左側直接調整：
   - Freeze 通膨門檻 (%)
@@ -77,13 +77,21 @@ http://localhost:8000
 - 平衡：高通膨且股票或債券其中一項跌破門檻，或提領率過高，才暫停生活費上調。
 - 嚴格：只有提領率過高才暫停生活費上調。
 
-## v5.3 股債現金連動修正
+## v5.5 股債現金連動修正
 
-## v5.3 更新
+## v5.5 更新
 
 - 修正股 / 債 / 現金比例連動。
 - 現金比例改成數值欄位輸入，不再使用拉桿。
 - 拉動「股票比例」時，債券比例會自動調整，確保 股票 + 債券 + 現金 = 100%。
 - 拉動「債券比例」時，股票比例會自動調整。
 - 修改現金比例時，股票與債券會依原本相對比例重新分配剩餘比重。
-- 更新版本與快取為 v5.3.0。
+- 更新版本與快取為 v5.5.0。
+
+
+## v5.5 更新
+
+- 市場模式第一選項改為 **Balanced Markov Regime**，並設為預設。
+- 市場模式第二選項為 **Historical Backtest**，作為 Bengen 式歷史序列基準。
+- 保留 Worst Historical、Conservative Regime Monte Carlo 與 Extreme Stress Test 作為壓力測試。
+- Balanced Markov Regime 改用狀態轉移矩陣，避免每年獨立抽樣造成過多不合理連續崩盤。

@@ -39,7 +39,7 @@
   "dynamicColaInflationThreshold": 5.0,
   "dynamicColaDrawdownThreshold": -5.0,
   "dynamicColaWithdrawalThreshold": 4.5,
-  "marketMode": "regime",
+  "marketMode": "balancedMarkov",
   "spendingStrategy": "smile",
   "dynamicColaFreezeRule": "balanced",
   "dynamicColaStockDrawdownThreshold": -5.0,
