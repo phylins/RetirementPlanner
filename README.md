@@ -1,17 +1,21 @@
-# Retirement Planner v3.7 PWA
+# Retirement Planner v3.8 PWA
 
-本版修正與調整：
+## 更新內容
 
-- 「快速情境」改名為「淨資產試算」。
-- 修正退休成功率數據不一致問題：首頁 KPI、退休時間最佳化 2026、退休決策矩陣改用同一組試算條件、同一組 deterministic seed 與同一回合數。
-- 第一年提領率改用「年初可投資資產」作為分母，避免用年末資產造成數字偏差。
-- 決策矩陣仍會依目前模式、支出策略、Dynamic COLA、股債配置、生活費、CAPE 與貸款條件同步重算。
-- 版本與快取更新至 v3.7.0。
+- 左側「淨資產試算」移到最上方，方便快速切換情境。
+- 右側主內容改為完整欄寬顯示順序：
+  1. Portfolio Engine
+  2. 退休決策矩陣
+  3. 年度支出與貸款明細
+- Portfolio Engine 不再與退休決策矩陣左右並排，改成完整寬度：左側顯示標的與市場說明，右側顯示 CAGR / 波動 / Sharpe 貢獻表。
+- 保留 v3.7 的一致性修正：KPI、退休時間最佳化、退休決策矩陣使用同一組條件與 seed。
+- 快取版本更新到 v3.8.0。
 
-## 更新到 GitHub Pages
+## GitHub Pages 更新方式
 
 1. 解壓縮 ZIP。
-2. 將所有檔案覆蓋到 GitHub repo 根目錄。
-3. 確認根目錄 `index.html` 第一行包含 `v3.7 root index`。
-4. Commit 後等待 Pages deployment 成功。
-5. 若仍顯示舊版，請 `Ctrl + F5`，或清除 Service Worker / site data。
+2. 將解壓後所有檔案覆蓋到 GitHub repo 根目錄。
+3. 確認根目錄 `index.html` 第一行含有 `v3.8 root index`。
+4. Commit changes。
+5. 等 GitHub Pages build/deploy 成功。
+6. 瀏覽器按 `Ctrl + F5`，必要時清除 Service Worker 快取。
