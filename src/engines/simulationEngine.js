@@ -12,6 +12,17 @@ function regimeReturn(rand, stats, y) {
   else { mean -= 3; vol *= 1.25; inf = 4.5 + rand()*3.5; }
   return { ret: mean + normal(rand)*vol, inflation: inf };
 }
+function shouldFreezeCola(config, inflation, ret, withdrawalRateBefore) {
+  if (!config.dynamicCola) return false;
+  const highInflation = inflation > config.dynamicColaInflationThreshold;
+  const badReturn = ret < config.dynamicColaDrawdownThreshold;
+  const highWithdrawal = withdrawalRateBefore > config.dynamicColaWithdrawalThreshold;
+  const rule = config.dynamicColaFreezeRule || 'balanced';
+  if (rule === 'any') return highInflation || badReturn || highWithdrawal;
+  if (rule === 'withdrawalOnly') return highWithdrawal;
+  // balanced: freeze only when high inflation and weak market happen together, or withdrawal rate is already too high.
+  return (highInflation && badReturn) || highWithdrawal;
+}
 function modeReturn(mode, stats, y, rand) {
   if (mode === 'historical') {
     const seq=[12,-8,22,5,-15,18,9,7,-4,14,3,11,-20,26,15,2];
@@ -44,7 +55,7 @@ export function runSinglePath(config, loans, portfolio, seed=1234, startDelay=0)
     const beginAssets = assets;
     const totalSpendingBefore = living + loan.loanPayment;
     const withdrawalRateBefore = beginAssets > 0 ? totalSpendingBefore / beginAssets * 100 : 999;
-    const freeze = config.dynamicCola && (inflation > config.dynamicColaInflationThreshold || ret < config.dynamicColaDrawdownThreshold || withdrawalRateBefore > config.dynamicColaWithdrawalThreshold);
+    const freeze = shouldFreezeCola(config, inflation, ret, withdrawalRateBefore);
     if (y > 0) living = livingExpenseByStrategy(living, y, inflation, config.spendingStrategy, freeze);
     const totalSpending = living + loan.loanPayment;
     const investmentReturn = beginAssets * ret / 100;

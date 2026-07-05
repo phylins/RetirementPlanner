@@ -11,6 +11,11 @@ const modes = [
   ['historical','Historical Backtest'],['worst','Worst Historical'],['regime','Regime Monte Carlo'],['extreme','Extreme Stress Test']
 ];
 const strategies = [['classic','Classic COLA'],['dynamic','Dynamic COLA'],['smile','Spending Smile'],['guardrails','Guardrails']];
+const freezeRules = [
+  ['any','寬鬆：任一條件觸發'],
+  ['balanced','平衡：高通膨+負報酬，或提領率過高'],
+  ['withdrawalOnly','嚴格：只有提領率過高']
+];
 let state, loans, scenarios, portfolio;
 const SIM_RUNS = 360;
 const SIM_SEED = 202600;
@@ -54,6 +59,7 @@ function setupControls(){
   const ms=$('mode-select'); ms.innerHTML=modes.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); ms.value=state.marketMode; ms.onchange=()=>{state.marketMode=ms.value;render();};
   const ss=$('spending-select'); ss.innerHTML=strategies.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); ss.value=state.spendingStrategy; ss.onchange=()=>{state.spendingStrategy=ss.value;render();};
   $('dynamic-cola').checked=state.dynamicCola; $('dynamic-cola').onchange=e=>{state.dynamicCola=e.target.checked;render();};
+  const fr=$('freeze-rule-select'); if(fr){ fr.innerHTML=freezeRules.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); fr.value=state.dynamicColaFreezeRule || 'balanced'; fr.onchange=()=>{ state.dynamicColaFreezeRule=fr.value; render(); }; }
   const sb=$('scenario-buttons'); sb.innerHTML=''; scenarios.forEach(netWorth=>{
     const investable = investableFromNetWorth(netWorth);
     const b=document.createElement('button');
@@ -136,7 +142,7 @@ function renderNotes(){
   $('model-notes').innerHTML=`
   <div class="note-item"><b>🧭 市場模式：${mode}</b><br>可切換 Historical / Worst / Regime / Extreme。預設 Regime 用牛市、熊市、復甦與高通膨狀態交替，避免純常態 Monte Carlo 過度產生不合理連續崩盤。</div>
   <div class="note-item"><b>💸 支出策略：${strat}</b><br>Spending Smile 預設：退休前期小幅增加，中後期趨於平緩或下降，晚年保留醫療支出上升空間。</div>
-  <div class="note-item"><b>🛡️ Dynamic COLA Freeze</b><br>若通膨過高、投資組合大跌，或第一年提領率高於門檻，該年生活費不跟通膨上調，以提高成功率。</div>
+  <div class="note-item"><b>🛡️ Dynamic COLA Freeze</b><br>可選 Freeze 條件：寬鬆＝通膨高、報酬差、提領率高任一觸發；平衡＝高通膨且負報酬，或提領率過高；嚴格＝只有提領率過高才暫停調升生活費。</div>
   <div class="note-item"><b>📈 股票配置</b><br>股票 65% 預設拆成：00631L 20%、VOO/VTI/VXUS 合計 60%、SOXX 20%。整體資產約為 00631L 13%、SOXX 13%、美國/全球核心 ETF 39%。</div>`;
 }
 function render(){
@@ -172,6 +178,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.8.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.9.0').catch(()=>{});
 }
 init();
