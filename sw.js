@@ -96,11 +96,28 @@ function render(){
     lineChart($('timing-chart'),{data:timing,series:[{key:'successRate',label:'成功率（左軸）',className:'green'}],yFormat:v=>pct(v,0),y2Series:{key:'firstWithdrawalRate',label:'第一年提領率（右軸）',className:'blue'},y2Format:v=>pct(v,1),height:260});
   });
 }
+function showSaveModal(){
+  const modal = $('save-modal');
+  if (!modal) return;
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden','false');
+  const close = $('save-modal-close');
+  if (close) close.focus();
+}
+function hideSaveModal(){
+  const modal = $('save-modal');
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden','true');
+}
 async function init(){
   const [assumptions, loanData, port, scen] = await Promise.all([loadJson('./data/assumptions.json'),loadJson('./data/loans.json'),loadJson('./data/portfolio.json'),loadJson('./data/scenarios.json')]);
   state = { ...assumptions, ...(loadState()?.state || {}) }; loans=loanData; portfolio = loadState()?.portfolio || port; scenarios=scen;
   setupControls(); render();
-  $('save-btn').onclick=()=>{ saveState({state,portfolio}); alert('已儲存到本機瀏覽器。'); };
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  $('save-btn').onclick=()=>{ saveState({state,portfolio}); showSaveModal(); };
+  $('save-modal-close')?.addEventListener('click', hideSaveModal);
+  $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.3.0').catch(()=>{});
 }
 init();
