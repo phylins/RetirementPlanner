@@ -1,33 +1,99 @@
-export function monthlyPayment(balance, months, apr) {
-  const r = (Number(apr) || 0) / 100 / 12;
-  if (!months) return 0;
-  if (r === 0) return balance / months;
-  return balance * r / (1 - Math.pow(1 + r, -months));
+import { annualLoanSchedule } from './loanEngine.js';
+import { portfolioStats } from './portfolioEngine.js';
+import { estimateTax, inflationFor, livingExpenseByStrategy, safemaxFromCAPE } from './withdrawalEngine.js';
+function seededRandom(seed) { let x = seed % 2147483647; if (x <= 0) x += 2147483646; return () => (x = x * 16807 % 2147483647) / 2147483647; }
+function normal(rand) { const u = Math.max(rand(), 1e-9), v = Math.max(rand(), 1e-9); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function regimeReturn(rand, stats, y) {
+  const r = rand();
+  let mean = stats.cagr, vol = stats.vol, inf = inflationFor('regime', y);
+  if (r < 0.56) { mean += 2.5; vol *= 0.85; inf = 1.6 + rand()*1.2; }
+  else if (r < 0.73) { mean -= 9; vol *= 1.45; inf = 0.5 + rand()*2.0; }
+  else if (r < 0.89) { mean += 5; vol *= 1.2; inf = 1.5 + rand()*2.5; }
+  else { mean -= 3; vol *= 1.25; inf = 4.5 + rand()*3.5; }
+  return { ret: mean + normal(rand)*vol, inflation: inf };
 }
-export function annualLoanSchedule(loans, years, startYear = 2026) {
-  const schedules = loans.map(l => ({ ...l, remaining: l.balance, payment: monthlyPayment(l.balance, l.months, l.apr), monthsLeft: l.months }));
+function modeReturn(mode, stats, y, rand) {
+  if (mode === 'historical') {
+    const seq=[12,-8,22,5,-15,18,9,7,-4,14,3,11,-20,26,15,2];
+    return { ret: seq[y%seq.length] * (stats.cagr/8.5), inflation: inflationFor('historical', y) };
+  }
+  if (mode === 'worst') {
+    const seq=[-28,-13,-5,8,12,-18,4,10,6,7,5,4];
+    return { ret: seq[Math.min(y, seq.length-1)] * (stats.vol/16), inflation: inflationFor('worst', y) };
+  }
+  if (mode === 'extreme') {
+    const seq=[-42,-20,-8,12,10,7,6,5];
+    return { ret: seq[Math.min(y, seq.length-1)] * (stats.vol/18), inflation: inflationFor('extreme', y) };
+  }
+  return regimeReturn(rand, stats, y);
+}
+export function runSinglePath(config, loans, portfolio, seed=1234, startDelay=0) {
+  const rand = seededRandom(seed + startDelay*1000);
+  const years = config.retirementYears;
+  const loanRows = annualLoanSchedule(loans, years + startDelay + 1, config.startYear);
+  const stats = portfolioStats(portfolio);
+  const householdIncome = config.incomeSelf + config.incomeSpouse;
+  const tax = estimateTax(householdIncome, config.effectiveTaxByIncome);
+  const afterTaxIncome = householdIncome - tax;
+  let assets = config.investableAssets;
+  let living = config.annualLivingExpense;
   const rows = [];
-  for (let y = 0; y < years; y++) {
-    let annualPayment = 0;
-    let endingBalance = 0;
-    const byLoan = {};
-    for (const l of schedules) {
-      let paidThisYear = 0;
-      for (let m = 0; m < 12 && l.monthsLeft > 0 && l.remaining > 0.5; m++) {
-        const r = (Number(l.apr) || 0) / 100 / 12;
-        const interest = l.remaining * r;
-        const principal = Math.min(l.remaining, Math.max(0, l.payment - interest));
-        const pay = principal + interest;
-        l.remaining -= principal;
-        l.monthsLeft -= 1;
-        paidThisYear += pay;
-      }
-      if (l.remaining < 1) l.remaining = 0;
-      annualPayment += paidThisYear;
-      endingBalance += l.remaining;
-      byLoan[l.name] = { paid: paidThisYear, endingBalance: l.remaining };
-    }
-    rows.push({ year: startYear + y, loanPayment: annualPayment, loanBalance: endingBalance, byLoan });
+  for (let y=0;y<years+startDelay;y++) {
+    const { ret, inflation } = modeReturn(config.marketMode, stats, y, rand);
+    const loan = loanRows[y] || {loanPayment:0, loanBalance:0};
+    const totalSpendingBefore = living + loan.loanPayment;
+    const withdrawalRateBefore = assets > 0 ? totalSpendingBefore / assets * 100 : 999;
+    const freeze = config.dynamicCola && (inflation > config.dynamicColaInflationThreshold || ret < config.dynamicColaDrawdownThreshold || withdrawalRateBefore > config.dynamicColaWithdrawalThreshold);
+    if (y > 0) living = livingExpenseByStrategy(living, y, inflation, config.spendingStrategy, freeze);
+    const totalSpending = living + loan.loanPayment;
+    const investmentReturn = assets * ret / 100;
+    const contribution = y < startDelay ? Math.max(0, afterTaxIncome - totalSpending) : 0;
+    assets = Math.max(0, assets + investmentReturn + contribution - totalSpending);
+    rows.push({ year: config.startYear + y, age: config.age + y, assets, living, loanPayment: loan.loanPayment, loanBalance: loan.loanBalance, totalSpending, withdrawalRate: assets>0?totalSpending/assets*100:999, investmentReturn, contribution, ret, inflation, freeze });
   }
   return rows;
+}
+export function simulate(config, loans, portfolio, runs=600) {
+  const paths = [];
+  let successes=0;
+  for (let i=0;i<runs;i++) {
+    const rows = runSinglePath(config, loans, portfolio, 202600+i*17, 0);
+    paths.push(rows);
+    if (rows[rows.length-1]?.assets > 0 && rows.every(r=>r.assets>0)) successes++;
+  }
+  const years = config.retirementYears;
+  const percentiles = [];
+  for (let y=0;y<years;y++) {
+    const vals = paths.map(p=>p[y]?.assets || 0).sort((a,b)=>a-b);
+    const pick = p => vals[Math.min(vals.length-1, Math.max(0, Math.floor((vals.length-1)*p)))];
+    percentiles.push({ year: config.startYear+y, p10: pick(0.10), p50: pick(0.50), p60: pick(0.60) });
+  }
+  return { successRate: successes/runs*100, percentiles, sample: paths[0], safemax: safemaxFromCAPE(config.cape, config.retirementYears), stats: portfolioStats(portfolio) };
+}
+export function timingOptimizer(config, loans, portfolio) {
+  const out=[];
+  for (let delay=0; delay<=10; delay++) {
+    const cfg={...config};
+    const runs=240;
+    let success=0; let firstWRs=[];
+    for (let i=0;i<runs;i++) {
+      const rows=runSinglePath(cfg, loans, portfolio, 9000+i*37, delay);
+      const retireRow=rows[delay] || rows[0];
+      firstWRs.push(retireRow.withdrawalRate);
+      const retirementRows=rows.slice(delay);
+      if (retirementRows.every(r=>r.assets>0) && retirementRows[retirementRows.length-1]?.assets>0) success++;
+    }
+    out.push({ year: config.startYear+delay, age: config.age+delay, successRate: success/runs*100, firstWithdrawalRate: firstWRs.reduce((a,b)=>a+b,0)/firstWRs.length });
+  }
+  return out;
+}
+export function decisionMatrix(config, loans, portfolio, scenarios) {
+  return scenarios.map(s => {
+    const cfg = { ...config, investableAssets: s };
+    const sim = simulate(cfg, loans, portfolio, 260);
+    const first = sim.sample[0];
+    let advice = '🔴 不建議';
+    if (sim.successRate >= 96) advice = '🟢 建議'; else if (sim.successRate >= 92) advice = '🟡 可考慮';
+    return { assets:s, firstWithdrawalRate:first.withdrawalRate, successRate:sim.successRate, safemax:sim.safemax, advice };
+  });
 }

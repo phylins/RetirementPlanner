@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Retirement Planner v3.2</title>
+  <link rel="manifest" href="./public/manifest.json" />
+  <link rel="stylesheet" href="./src/styles.css?v=3.2.0" />
+  <meta name="theme-color" content="#165dff" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">RP</div>
+        <div>
+          <h1>Retirement Planner</h1>
+          <p>v3.2 PWA</p>
+        </div>
+      </div>
+      <section class="control-block">
+        <h2>起始條件</h2>
+        <div id="input-investable"></div>
+        <div id="input-living"></div>
+        <div id="input-years"></div>
+        <div id="input-cape"></div>
+      </section>
+      <section class="control-block">
+        <h2>收入與稅</h2>
+        <div id="input-income-self"></div>
+        <div id="input-income-spouse"></div>
+      </section>
+      <section class="control-block">
+        <h2>模式</h2>
+        <label class="field"><span>市場模式</span><select id="mode-select"></select></label>
+        <label class="field"><span>支出策略</span><select id="spending-select"></select></label>
+        <label class="toggle"><input type="checkbox" id="dynamic-cola" checked /> <span>啟用 Dynamic COLA Freeze</span></label>
+      </section>
+      <section class="control-block compact">
+        <h2>快速情境</h2>
+        <div id="scenario-buttons" class="scenario-buttons"></div>
+      </section>
+      <section class="control-block">
+        <h2>股債現金</h2>
+        <div id="input-stock"></div>
+        <div id="input-bond"></div>
+        <div id="input-cash"></div>
+      </section>
+      <section class="control-block">
+        <h2>股票內部配置</h2>
+        <div id="equity-controls"></div>
+      </section>
+      <section class="control-block">
+        <h2>債券內部配置</h2>
+        <div id="bond-controls"></div>
+      </section>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2>退休決策儀表板</h2>
+          <p>41歲起算，預設 65% 股票 / 30% 債券 / 5% 現金，股票內含 00631L 與 SOXX。</p>
+        </div>
+        <button id="save-btn" class="primary">儲存設定</button>
+      </header>
+      <section class="kpi-grid" id="kpi-grid"></section>
+      <section class="chart-grid">
+        <div class="card"><div class="card-head"><h3>資產曲線</h3><p>P10 / P50 / P60，台灣單位顯示</p></div><div id="asset-chart"></div></div>
+        <div class="card"><div class="card-head"><h3>年度支出與貸款</h3><p>生活費、貸款與總支出</p></div><div id="expense-chart"></div></div>
+        <div class="card"><div class="card-head"><h3>貸款餘額</h3><p>單位：萬元</p></div><div id="loan-chart"></div></div>
+        <div class="card"><div class="card-head"><h3>退休時間最佳化</h3><p>雙 Y 軸：左成功率，右第一年提領率</p></div><div id="timing-chart"></div></div>
+      </section>
+      <section class="decision-grid">
+        <div class="card wide"><div class="card-head"><h3>退休決策矩陣</h3><p>1.8億到3.0億，每0.2億一跳。</p></div><div class="table-wrap"><table id="decision-table"></table></div></div>
+        <div class="card"><div class="card-head"><h3>Portfolio Engine</h3><p>依資產類別估算報酬、波動與風險貢獻；標的附中文市場/產業說明。</p></div><div id="portfolio-summary"></div></div>
+      </section>
+      <section class="detail-grid">
+        <div class="card wide"><div class="card-head"><h3>年度支出與貸款明細</h3><p>每一年都列出生活費、貸款、總支出、提領率、年度報酬與新增投資。</p></div><div class="table-wrap tall"><table id="cashflow-table"></table></div></div>
+        <div class="card"><div class="card-head"><h3>模型說明</h3></div><div class="model-notes" id="model-notes"></div></div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="./src/app.js?v=3.2.0"></script>
+</body>
+</html>

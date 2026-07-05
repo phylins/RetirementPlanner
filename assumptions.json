@@ -1,17 +1,121 @@
-{
-  "topLevel": {"stock":65,"bond":30,"cash":5},
-  "equity": {
-    "00631L": {"weight":20,"cagr":13.0,"vol":48,"category":"taiwanLeveraged","name":"台灣50正2","description":"台股槓桿型 ETF，目標為台灣大型權值股約 2 倍日報酬，波動高，適合成長型衛星配置。"},
-    "VOO": {"weight":40,"cagr":9.5,"vol":17,"category":"usCore","name":"美國 S&P 500 大型股","description":"追蹤美國 S&P 500 指數，代表美國大型股核心市場。"},
-    "VTI": {"weight":10,"cagr":9.3,"vol":18,"category":"usCore","name":"美國全市場股票","description":"涵蓋美國大型、中型與小型股，作為美股廣泛分散配置。"},
-    "VXUS": {"weight":10,"cagr":7.5,"vol":19,"category":"global","name":"美國以外全球股票","description":"投資美國以外已開發與新興市場，用於降低單一美國市場估值風險。"},
-    "SOXX": {"weight":20,"cagr":10.5,"vol":31,"category":"semiconductor","name":"美國半導體指數","description":"追蹤美國上市半導體產業，偏向 AI、晶片、設備與半導體供應鏈。"}
-  },
-  "bond": {
-    "IEF": {"weight":55,"cagr":3.5,"vol":8,"category":"treasury","name":"美國 7-10 年公債","description":"中天期美國公債，作為退休組合主要防禦與再平衡資產。"},
-    "TLT": {"weight":15,"cagr":4.0,"vol":17,"category":"longTreasury","name":"美國 20 年以上長天期公債","description":"長天期美國公債，利率下行時避險效果較強，但波動也較高。"},
-    "VCIT": {"weight":15,"cagr":4.5,"vol":9,"category":"credit","name":"美國中天期投資級公司債","description":"投資級公司債，提供較公債高的收益，但有信用利差風險。"},
-    "SGOV": {"weight":15,"cagr":3.5,"vol":1,"category":"cashLike","name":"美國 0-3 個月短期國債","description":"短天期美國國債 ETF，接近現金與 T-Bill 水位，用於提領緩衝池。"}
-  },
-  "cash": {"cagr":2.0,"vol":0.5,"name":"現金 / MMF","description":"銀行現金、貨幣市場基金或短期備用金，主要用於流動性與緊急支出。"}
-}
+# Retirement Planner v3.2 PWA
+
+這是一個可維護的退休規劃 PWA 專案，支援本機執行、GitHub Pages 部署與離線使用。
+
+## 功能
+
+- 2026 起始可投資資產：可用拉桿與數值輸入調整，上限 3 億。
+- 年收入：我的年收入、家人年收入，依簡化有效稅表估算稅後收入與年度新增投資。
+- 六筆貸款逐年攤還：顯示年度還款與年底剩餘本金。
+- 股債現金配置：預設 65 / 30 / 5。
+- 股票內部配置：00631L 20%、VOO 40%、VTI 10%、VXUS 10%、SOXX 20%。
+- 債券配置：IEF / TLT / VCIT / SGOV。
+- 四種市場模式：Historical Backtest、Worst Historical、Regime Monte Carlo、Extreme Stress Test。
+- 支出策略：Classic COLA、Dynamic COLA、Spending Smile、Guardrails。
+- Dynamic COLA Freeze：遇到高通膨、組合下跌或提領率過高時，該年生活費不跟通膨上調。
+- 資產曲線：P10 / P50 / P60。
+- 退休時間最佳化：雙 Y 軸，左軸成功率，右軸第一年提領率。
+- 退休決策矩陣：1.8 億到 3.0 億，每 0.2 億一跳。
+- PWA：可安裝、可離線、設定可存到本機瀏覽器。
+
+## 本機使用方式
+
+### 方法 A：直接開啟
+
+有些瀏覽器可以直接雙擊 `index.html` 開啟，但 Service Worker 與部分模組功能可能受限制。
+
+### 方法 B：用 Python 開本機伺服器（建議）
+
+Windows / Mac / Linux 皆可：
+
+```bash
+python -m http.server 8000
+```
+
+或：
+
+```bash
+python3 -m http.server 8000
+```
+
+然後開瀏覽器：
+
+```text
+http://localhost:8000
+```
+
+## GitHub Pages 部署
+
+1. 建立 GitHub repository，例如 `RetirementPlanner`。
+2. 將本專案所有檔案上傳到 repo 根目錄。
+3. 到 GitHub repo：`Settings` → `Pages`。
+4. Source 選 `Deploy from a branch`。
+5. Branch 選 `main`，資料夾選 `/root`。
+6. 等待 1 到 3 分鐘，GitHub 會給你網址：
+
+```text
+https://你的帳號.github.io/RetirementPlanner/
+```
+
+## 安裝成 App
+
+部署到 GitHub Pages 後：
+
+- Windows / Chrome：網址列右側會出現「安裝」圖示。
+- Mac / Chrome：可安裝成桌面 App。
+- iPhone Safari：分享 → 加入主畫面。
+- Android Chrome：選單 → 安裝應用程式。
+
+## 專案結構
+
+```text
+RetirementPlanner/
+├── index.html
+├── sw.js
+├── package.json
+├── README.md
+├── public/
+│   ├── manifest.json
+│   └── icons/
+├── data/
+│   ├── assumptions.json
+│   ├── loans.json
+│   ├── portfolio.json
+│   └── scenarios.json
+└── src/
+    ├── app.js
+    ├── styles.css
+    ├── components/
+    │   └── chart.js
+    ├── engines/
+    │   ├── loanEngine.js
+    │   ├── portfolioEngine.js
+    │   ├── withdrawalEngine.js
+    │   ├── simulationEngine.js
+    │   └── optimizer.js
+    └── utils/
+        ├── format.js
+        └── storage.js
+```
+
+## 後續建議開發
+
+- v3.2：接入真實歷史報酬與 CPI 資料。
+- v3.2：把 Monte Carlo 改成 Web Worker，提升速度。
+- v3.3：加入完整 Scenario 儲存與比較。
+- v4.0：串接 CAPE、VIX、10Y Yield 等市場資料。
+
+
+## v3.2 更新重點
+
+- 修正多張 SVG 圖表空白或未渲染的問題，加入 chart error fallback。
+- 年度支出、貸款餘額、退休時間最佳化圖表改用更穩定的原生 SVG renderer。
+- Portfolio Engine 加入中文標的說明：00631L、VOO、VTI、VXUS、SOXX、IEF、TLT、VCIT、SGOV、現金。
+- PWA cache 版本升級到 v3.2；若瀏覽器仍顯示舊版，請按 Ctrl+F5 或重新安裝 PWA。
+
+
+## v3.2 更新
+- 修正 PWA/Service Worker 快取造成的舊版 JS/CSS 被沿用問題。
+- 圖表改成 requestAnimationFrame 後渲染，避免容器寬度尚未完成計算時空白。
+- 左側 ETF 控制項加入中文標的名稱與市場/產業說明。
+- Service Worker 改為 JS/CSS/data network-first，更新 GitHub Pages 後更容易抓到新版。
