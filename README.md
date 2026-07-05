@@ -1,4 +1,4 @@
-# Retirement Planner v3.0 PWA
+# Retirement Planner v3.1 PWA
 
 這是一個可維護的退休規劃 PWA 專案，支援本機執行、GitHub Pages 部署與離線使用。
 
@@ -104,3 +104,11 @@ RetirementPlanner/
 - v3.2：把 Monte Carlo 改成 Web Worker，提升速度。
 - v3.3：加入完整 Scenario 儲存與比較。
 - v4.0：串接 CAPE、VIX、10Y Yield 等市場資料。
+
+
+## v3.1 更新重點
+
+- 修正多張 SVG 圖表空白或未渲染的問題，加入 chart error fallback。
+- 年度支出、貸款餘額、退休時間最佳化圖表改用更穩定的原生 SVG renderer。
+- Portfolio Engine 加入中文標的說明：00631L、VOO、VTI、VXUS、SOXX、IEF、TLT、VCIT、SGOV、現金。
+- PWA cache 版本升級到 v3.1；若瀏覽器仍顯示舊版，請按 Ctrl+F5 或重新安裝 PWA。

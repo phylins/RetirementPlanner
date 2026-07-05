@@ -1,4 +1,4 @@
-const CACHE = 'retirement-planner-v3.0.0';
+const CACHE = 'retirement-planner-v3.1.0';
 const ASSETS = [
   './', './index.html', './src/app.js', './src/styles.css', './public/manifest.json',
   './data/assumptions.json', './data/loans.json', './data/portfolio.json', './data/scenarios.json',
