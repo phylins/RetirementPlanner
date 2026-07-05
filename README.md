@@ -1,8 +1,8 @@
-# Retirement Planner v5.5 PWA
+# Retirement Planner v5.6 PWA
 
-## v5.5 更新重點
+## v5.6 更新重點
 
-- 版本號正式升級為 `v5.5.0`，不再使用 4.x。
+- 版本號正式升級為 `v5.6.0`，不再使用 4.x。
 - 左側控制欄取消內部捲軸，全部欄位跟著主頁面一起捲動。
 - 頁面右上新增版本與最後更新時間，方便確認 GitHub Pages / PWA 是否抓到新版。
 - 新增 CSV 匯出：
@@ -38,7 +38,7 @@ http://localhost:8000
 3. 確認根目錄的 `index.html` 第一行是：
 
 ```html
-<!-- Retirement Planner v5.5 root index...
+<!-- Retirement Planner v5.6 root index...
 ```
 
 4. Commit / Push。
@@ -86,7 +86,7 @@ http://localhost:8000
 - 拉動「股票比例」時，債券比例會自動調整，確保 股票 + 債券 + 現金 = 100%。
 - 拉動「債券比例」時，股票比例會自動調整。
 - 修改現金比例時，股票與債券會依原本相對比例重新分配剩餘比重。
-- 更新版本與快取為 v5.5.0。
+- 更新版本與快取為 v5.6.0。
 
 
 ## v5.5 更新
@@ -95,3 +95,13 @@ http://localhost:8000
 - 市場模式第二選項為 **Historical Backtest**，作為 Bengen 式歷史序列基準。
 - 保留 Worst Historical、Conservative Regime Monte Carlo 與 Extreme Stress Test 作為壓力測試。
 - Balanced Markov Regime 改用狀態轉移矩陣，避免每年獨立抽樣造成過多不合理連續崩盤。
+
+
+## v5.6 更新
+
+- 市場模式第一個選項維持 **Balanced Markov Regime**，並以 `data/assumptions.json` 的 `marketMode: "balancedMarkov"` 作為預設。
+- 修正股票內部配置與債券內部配置的連動方式：
+  - 拉動任一股票 ETF 時，其他股票 ETF 會依原本相對比例自動調整，股票內部合計保持 100%。
+  - 拉動任一債券 ETF 時，其他債券 ETF 會依原本相對比例自動調整，債券內部合計保持 100%。
+  - 左側輸入框與滑桿會同步更新，不再只改單一欄位。
+- 快取版本更新為 v5.6.0。

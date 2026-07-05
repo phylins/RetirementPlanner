@@ -23,7 +23,7 @@ const freezeRules = [
 let state, loans, scenarios, portfolio;
 const SIM_RUNS = 360;
 const SIM_SEED = 202600;
-const APP_VERSION = '5.5.0';
+const APP_VERSION = '5.6.0';
 let contributionSort = { key: 'riskShare', dir: 'desc' };
 let currentSim = null;
 let currentMatrix = null;
@@ -89,20 +89,66 @@ function setCashShare(newCash){
   rebalanceTopLevel(portfolio, Number(stock.toFixed(1)), Number(bond.toFixed(1)), Number(cash.toFixed(1)));
   syncTopLevelControls();
 }
+function syncGroupControls(parent, group){
+  if (!parent || !group) return;
+  parent.querySelectorAll('.asset-control').forEach(wrap => {
+    const key = wrap.dataset.assetKey;
+    if (!key || !group[key]) return;
+    const value = Number(group[key].weight || 0);
+    const r = wrap.querySelector('input[type=range]');
+    const t = wrap.querySelector('input[type=text]');
+    if (r) r.value = String(value);
+    if (t) t.value = String(Number(value.toFixed(1)));
+  });
+}
+function rebalanceGroupProportional(group, changedKey){
+  const keys = Object.keys(group);
+  const others = keys.filter(k => k !== changedKey);
+  const changed = clamp(Number(group[changedKey]?.weight || 0), 0, 100);
+  group[changedKey].weight = Number(changed.toFixed(1));
+  const remaining = Math.max(0, 100 - changed);
+  const otherTotal = others.reduce((sum, k) => sum + Number(group[k].weight || 0), 0);
+  if (!others.length) return;
+  let assigned = 0;
+  if (otherTotal <= 0.0001) {
+    const equal = remaining / others.length;
+    others.forEach((k, i) => {
+      const value = i === others.length - 1 ? remaining - assigned : Number(equal.toFixed(1));
+      group[k].weight = Number(Math.max(0, value).toFixed(1));
+      assigned += group[k].weight;
+    });
+  } else {
+    others.forEach((k, i) => {
+      const raw = remaining * Number(group[k].weight || 0) / otherTotal;
+      const value = i === others.length - 1 ? remaining - assigned : Number(raw.toFixed(1));
+      group[k].weight = Number(Math.max(0, value).toFixed(1));
+      assigned += group[k].weight;
+    });
+  }
+  const total = keys.reduce((sum, k) => sum + Number(group[k].weight || 0), 0);
+  const drift = Number((100 - total).toFixed(1));
+  if (Math.abs(drift) >= 0.1 && others.length) {
+    const target = others[others.length - 1];
+    group[target].weight = Number(Math.max(0, Number(group[target].weight || 0) + drift).toFixed(1));
+  }
+}
 
 function pctControl(parent, key, label, obj, max=100, onChange=()=>{}){
   const wrap=document.createElement('div'); wrap.className='control-row asset-control';
+  wrap.dataset.assetKey = key;
   const name = obj[key].name || '';
   const desc = obj[key].description || '';
   wrap.innerHTML=`<label><b>${key}</b>${name?`<span class="asset-name">${name}</span>`:''}${desc?`<small>${desc}</small>`:''}</label><input type="range" min="0" max="${max}" step="1" value="${obj[key].weight}"><input type="text" value="${obj[key].weight}">`;
   const r=wrap.querySelector('input[type=range]'), t=wrap.querySelector('input[type=text]');
-  function apply(v){ obj[key].weight=clamp(v,0,max); t.value=obj[key].weight; r.value=obj[key].weight; onChange(key); render(); }
-  r.addEventListener('input',()=>apply(Number(r.value))); t.addEventListener('change',()=>apply(Number(t.value))); parent.append(wrap);
-}
-function normalizeGroup(group, changedKey){
-  const keys=Object.keys(group); let total=Object.values(group).reduce((s,a)=>s+a.weight,0); if(total===100)return;
-  const diff=100-total; const target=keys.find(k=>k!==changedKey && group[k].weight+diff>=0) || keys.find(k=>k!==changedKey);
-  if(target) group[target].weight=Number((group[target].weight+diff).toFixed(1));
+  function apply(v){
+    obj[key].weight = clamp(Number(v || 0), 0, max);
+    onChange(key);
+    syncGroupControls(parent, obj);
+    render();
+  }
+  r.addEventListener('input',()=>apply(Number(r.value)));
+  t.addEventListener('change',()=>apply(Number(t.value)));
+  parent.append(wrap);
 }
 function setupControls(){
   control('input-investable','2026 可投資資產',120000000,350000000,1000000,state.investableAssets,v=>state.investableAssets=v);
@@ -130,8 +176,8 @@ function setupControls(){
     b.onclick=()=>{ state.investableAssets=investable; setupControls(); render(); };
     sb.append(b);
   });
-  const eq=$('equity-controls'); eq.innerHTML=''; Object.keys(portfolio.equity).forEach(k=>pctControl(eq,k,k,portfolio.equity,80, changed=>normalizeGroup(portfolio.equity, changed)));
-  const bd=$('bond-controls'); bd.innerHTML=''; Object.keys(portfolio.bond).forEach(k=>pctControl(bd,k,k,portfolio.bond,80, changed=>normalizeGroup(portfolio.bond, changed)));
+  const eq=$('equity-controls'); eq.innerHTML=''; Object.keys(portfolio.equity).forEach(k=>pctControl(eq,k,k,portfolio.equity,80, changed=>rebalanceGroupProportional(portfolio.equity, changed)));
+  const bd=$('bond-controls'); bd.innerHTML=''; Object.keys(portfolio.bond).forEach(k=>pctControl(bd,k,k,portfolio.bond,80, changed=>rebalanceGroupProportional(portfolio.bond, changed)));
 }
 function renderKpis(sim, loanRows){
   const income=state.incomeSelf+state.incomeSpouse; const tax=estimateTax(income,state.effectiveTaxByIncome); const after=income-tax; const first=sim.sample[0];
@@ -220,13 +266,13 @@ function exportCashflowCsv() {
   if (!currentSim) return;
   const headers = ['年份','年齡','年初資產','年底資產','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額','通膨','組合報酬','股票報酬','債券報酬','Freeze'];
   const rows = currentSim.sample.map(r => [r.year,r.age,Math.round(r.beginAssets),Math.round(r.assets),Math.round(r.living),Math.round(r.loanPayment),Math.round(r.totalSpending),r.withdrawalRate.toFixed(2),Math.round(r.investmentReturn),Math.round(r.contribution),Math.round(r.loanBalance),r.inflation?.toFixed?.(2) ?? '',r.ret?.toFixed?.(2) ?? '',r.stockRet?.toFixed?.(2) ?? '',r.bondRet?.toFixed?.(2) ?? '',r.freeze ? 'Y':'N']);
-  downloadCsv('retirement_cashflow_v5_5.csv', headers, rows);
+  downloadCsv('retirement_cashflow_v5_6.csv', headers, rows);
 }
 function exportDecisionCsv() {
   if (!currentMatrix) return;
   const headers = ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'];
   const rows = currentMatrix.map((r,i) => [Math.round(netWorthFromInvestable(r.assets)),Math.round(r.assets),r.firstWithdrawalRate.toFixed(2),r.successRate.toFixed(1),r.safemax.toFixed(2),String(r.advice).replace(/^[^\s]+\s*/,''),i===0?'':(currentMatrix[i].successRate-currentMatrix[i-1].successRate).toFixed(1)]);
-  downloadCsv('retirement_decision_matrix_v5_5.csv', headers, rows);
+  downloadCsv('retirement_decision_matrix_v5_6.csv', headers, rows);
 }
 function renderDiagnostics(sim, matrix) {
   const first = sim.sample[0];
@@ -288,7 +334,7 @@ async function init(){
   // v5.1 changes default living expense from 600萬 to 500萬.
   // If an older saved profile still has the old untouched default 600萬, migrate it once.
   if (!saved?.version && state.annualLivingExpense === 6000000) state.annualLivingExpense = assumptions.annualLivingExpense;
-  // v5.5 fallback for older saved profiles.
+  // v5.6 fallback for older saved profiles.
   state.dynamicColaInflationThreshold ??= assumptions.dynamicColaInflationThreshold ?? 5;
   state.dynamicColaStockDrawdownThreshold ??= assumptions.dynamicColaStockDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
   state.dynamicColaBondDrawdownThreshold ??= assumptions.dynamicColaBondDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
@@ -301,6 +347,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.5.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.6.0').catch(()=>{});
 }
 init();
