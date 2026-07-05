@@ -2,7 +2,7 @@ import { simulate, timingOptimizer, decisionMatrix } from './engines/simulationE
 import { annualLoanSchedule } from './engines/loanEngine.js';
 import { portfolioStats, rebalanceTopLevel } from './engines/portfolioEngine.js';
 import { estimateTax } from './engines/withdrawalEngine.js';
-import { lineChart, barLineChart, sparkBars } from './components/chart.js';
+import { lineChart, barLineChart } from './components/chart.js';
 import { twMoney, twWan, pct, numberInput, parseNumberInput, clamp, star } from './utils/format.js';
 import { saveState, loadState } from './utils/storage.js';
 
@@ -12,6 +12,7 @@ const modes = [
 ];
 const strategies = [['classic','Classic COLA'],['dynamic','Dynamic COLA'],['smile','Spending Smile'],['guardrails','Guardrails']];
 let state, loans, scenarios, portfolio;
+let contributionSort = { key: 'riskShare', dir: 'desc' };
 function netWorthFromInvestable(v){ return Number(v || 0) - Number(state?.netWorthGap || 0); }
 function investableFromNetWorth(v){ return Number(v || 0) + Number(state?.netWorthGap || 0); }
 async function loadJson(path){ return fetch(path).then(r=>r.json()); }
@@ -74,13 +75,22 @@ function renderTables(sim, matrix, marginal){
   table($('cashflow-table'), ['年份','年齡','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額'], sim.sample.map(r=>`<tr><td>${r.year}</td><td>${r.age}</td><td>${twMoney(r.living)}</td><td>${twMoney(r.loanPayment)}</td><td>${twMoney(r.totalSpending)}</td><td>${pct(r.withdrawalRate,2)}</td><td>${twMoney(r.investmentReturn)}</td><td>${twMoney(r.contribution)}</td><td>${twWan(r.loanBalance)}</td></tr>`));
   table($('decision-table'), ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'], matrix.map((r,i)=>`<tr><td>${twMoney(netWorthFromInvestable(r.assets),1)}</td><td>${twMoney(r.assets,1)}</td><td>${pct(r.firstWithdrawalRate,2)}</td><td>${pct(r.successRate,1)}</td><td>${pct(r.safemax,2)}</td><td>${r.advice}</td><td>${i===0?'—':pct(matrix[i].successRate-matrix[i-1].successRate,1)}</td></tr>`));
 }
-function contributionRows(title, rows, valueKey, formatter, hint){
-  return `<h4>${title}</h4><div class="contrib-list">${rows.map(r=>`
-    <div class="contrib-row" title="${r.description || ''}">
-      <span><b>${r.ticker}</b><em>${r.name || ''}</em></span>
-      <div class="mini-bar"><i style="width:${Math.max(2, Math.min(100, Math.abs(r[valueKey]) / Math.max(...rows.map(x=>Math.abs(x[valueKey])), 0.01) * 100))}%"></i></div>
-      <strong>${formatter(r[valueKey])}</strong>
-    </div>`).join('')}</div><p class="contrib-hint">${hint}</p>`;
+function buildContributionRows(stats) {
+  const byTicker = new Map(stats.assets.map(a => [a.ticker, {
+    ticker: a.ticker, name: a.name || '', description: a.description || '', weight: a.weight * 100,
+    cagrContribution: 0, riskShare: 0, sharpeContribution: 0
+  }]));
+  stats.cagrContrib.forEach(r => { if (byTicker.has(r.ticker)) byTicker.get(r.ticker).cagrContribution = r.contribution; });
+  stats.riskContrib.forEach(r => { if (byTicker.has(r.ticker)) byTicker.get(r.ticker).riskShare = r.riskShare; });
+  stats.sharpeContrib.forEach(r => { if (byTicker.has(r.ticker)) byTicker.get(r.ticker).sharpeContribution = r.contribution; });
+  const rows = [...byTicker.values()];
+  const dir = contributionSort.dir === 'asc' ? 1 : -1;
+  rows.sort((a,b) => (Number(a[contributionSort.key] || 0) - Number(b[contributionSort.key] || 0)) * dir);
+  return rows;
+}
+function sortButton(key, label) {
+  const arrow = contributionSort.key === key ? (contributionSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  return `<button class="sort-btn" data-sort="${key}">${label}${arrow}</button>`;
 }
 function renderPortfolio(stats){
   const assetRows = stats.assets.map(a => `
@@ -88,12 +98,36 @@ function renderPortfolio(stats){
       <div><b>${a.ticker}</b><span>${a.name || ''}</span><small>${a.description || ''}</small></div>
       <strong>${pct(a.weight*100,1)}</strong>
     </div>`).join('');
+  const rows = buildContributionRows(stats);
   $('portfolio-summary').innerHTML=`
     <div class="portfolio-stat"><div><span>CAGR</span><b>${pct(stats.cagr,1)}</b></div><div><span>Volatility</span><b>${pct(stats.vol,1)}</b></div><div><span>Sharpe</span><b>${stats.sharpe.toFixed(2)}</b></div></div>
     <h4>標的與目標市場</h4><div class="asset-list">${assetRows}</div>
-    ${contributionRows('CAGR 貢獻', stats.cagrContrib, 'contribution', v=>pct(v,2), '每檔標的對整體年化報酬的加權貢獻。')}
-    ${contributionRows('波動 / 風險貢獻', stats.riskContrib, 'riskShare', v=>pct(v,1), '以權重與波動率估算的風險占比，數字越高代表越影響組合波動。')}
-    ${contributionRows('Sharpe 貢獻', stats.sharpeContrib, 'contribution', v=>v.toFixed(3), '以超額報酬除以組合波動率估算的貢獻，正值代表提高風險調整後報酬。')}`;
+    <h4>組合貢獻表 <small>點選欄位可排序</small></h4>
+    <div class="contrib-table-wrap"><table class="contrib-table">
+      <thead><tr>
+        <th>${sortButton('ticker','標的')}</th>
+        <th>${sortButton('weight','權重')}</th>
+        <th>${sortButton('cagrContribution','CAGR 貢獻')}</th>
+        <th>${sortButton('riskShare','風險貢獻')}</th>
+        <th>${sortButton('sharpeContribution','Sharpe 貢獻')}</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `<tr title="${r.description || ''}">
+        <td><b>${r.ticker}</b><span>${r.name}</span></td>
+        <td>${pct(r.weight,1)}</td>
+        <td>${pct(r.cagrContribution,2)}</td>
+        <td>${pct(r.riskShare,1)}</td>
+        <td>${r.sharpeContribution.toFixed(3)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <p class="contrib-hint">CAGR 貢獻＝權重 × 該標的預估年化報酬。風險貢獻＝以權重與波動率估算，越高代表越影響組合震盪。Sharpe 貢獻＝對風險調整後報酬的近似貢獻。</p>`;
+  document.querySelectorAll('#portfolio-summary .sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.sort;
+      if (contributionSort.key === key) contributionSort.dir = contributionSort.dir === 'asc' ? 'desc' : 'asc';
+      else contributionSort = { key, dir: key === 'ticker' ? 'asc' : 'desc' };
+      renderPortfolio(stats);
+    });
+  });
 }
 function renderNotes(){
   const mode=modes.find(m=>m[0]===state.marketMode)?.[1]; const strat=strategies.find(s=>s[0]===state.spendingStrategy)?.[1];
@@ -136,6 +170,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.5.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.6.0').catch(()=>{});
 }
 init();

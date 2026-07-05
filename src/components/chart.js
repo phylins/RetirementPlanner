@@ -26,11 +26,55 @@ function clear(node) { while (node.firstChild) node.removeChild(node.firstChild)
 function widthOf(node) { return Math.max(720, Math.round(node.getBoundingClientRect().width || node.clientWidth || 900)); }
 function makeSvg(node, height, rightAxis = false) {
   clear(node);
+  node.classList.add('chart-host');
   const w = widthOf(node);
   const m = { l: 82, r: rightAxis ? 92 : 34, t: 26, b: 78 };
   const svg = svgEl('svg', { viewBox: `0 0 ${w} ${height}`, class: 'chart-svg', role: 'img', preserveAspectRatio: 'xMidYMid meet' });
   node.appendChild(svg);
   return { svg, w, h: height, m };
+}
+function makeTooltip(node) {
+  let tip = node.querySelector('.chart-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.className = 'chart-tooltip';
+    tip.hidden = true;
+    node.appendChild(tip);
+  }
+  return tip;
+}
+function addHover(svg, node, data, x, h, m, entriesFn) {
+  const tip = makeTooltip(node);
+  const plotTop = m.t;
+  const plotBottom = h - m.b;
+  const plotW = Math.max(1, (svg.viewBox.baseVal.width || widthOf(node)) - m.l - m.r);
+  const step = plotW / Math.max(data.length - 1, 1);
+  const g = svgEl('g', { class: 'hover-layer' });
+  data.forEach((row, i) => {
+    const xx = x(i);
+    const rect = svgEl('rect', {
+      x: xx - step / 2,
+      y: plotTop,
+      width: step,
+      height: plotBottom - plotTop,
+      fill: 'transparent',
+      class: 'hover-zone'
+    });
+    rect.addEventListener('mousemove', () => {
+      const rows = entriesFn(row, i).filter(Boolean);
+      tip.innerHTML = `<b>${row.year ?? row.label ?? ''}</b>${rows.map(r => `<div><span class="dot" style="background:${r.color}"></span>${r.label}<strong>${r.value}</strong></div>`).join('')}`;
+      tip.hidden = false;
+      const svgRect = svg.getBoundingClientRect();
+      const nodeRect = node.getBoundingClientRect();
+      const px = (xx / (svg.viewBox.baseVal.width || svgRect.width)) * svgRect.width + (svgRect.left - nodeRect.left);
+      const py = Math.max(12, plotTop + (svgRect.top - nodeRect.top));
+      tip.style.left = `${Math.min(Math.max(8, px + 10), Math.max(8, nodeRect.width - 220))}px`;
+      tip.style.top = `${py + 12}px`;
+    });
+    rect.addEventListener('mouseleave', () => { tip.hidden = true; });
+    g.append(rect);
+  });
+  svg.append(g);
 }
 function drawAxes(svg, w, h, m, yr, yFormat, ticks = 4, tickValues = null) {
   const plotW = w - m.l - m.r, plotH = h - m.t - m.b;
@@ -92,14 +136,17 @@ export function lineChart(node, opts) {
       const color = COLORS[s.className] || COLORS.blue;
       const d = data.map((row, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${axes.y(finite(row[s.key])).toFixed(1)}`).join(' ');
       svg.append(svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+      data.forEach((row,i)=>svg.append(svgEl('circle',{cx:x(i),cy:axes.y(finite(row[s.key])),r:2.6,fill:color,opacity:.85})));
     });
     const legends = [...series];
+    let y2Scale = null;
     if (y2Series) {
       const vals2 = data.map(d => finite(d[y2Series.key]));
       const r2 = niceRange(vals2, y2Min ?? 0, y2Max ?? Math.max(10, Math.ceil(Math.max(...vals2, 1))));
       const plotH = h - m.t - m.b;
       const y2Raw = v => h - m.b - ((v - r2.min) / (r2.max - r2.min)) * plotH;
       const y2 = v => y2Raw(clampNum(v, r2.min, r2.max));
+      y2Scale = y2;
       svg.append(svgEl('line', { x1: w - m.r, y1: m.t, x2: w - m.r, y2: h - m.b, class: 'axis' }));
       const r2Ticks = y2Step ? fixedTickValues(r2.min, r2.max, y2Step) : fixedTickValues(r2.min, r2.max, (r2.max-r2.min)/4);
       r2Ticks.forEach(val => {
@@ -109,9 +156,15 @@ export function lineChart(node, opts) {
       const color = COLORS[y2Series.className] || COLORS.blue;
       const d = data.map((row, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y2(finite(row[y2Series.key])).toFixed(1)}`).join(' ');
       svg.append(svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+      data.forEach((row,i)=>svg.append(svgEl('circle',{cx:x(i),cy:y2(finite(row[y2Series.key])),r:2.6,fill:color,opacity:.85})));
       legends.push(y2Series);
     }
     drawLegend(svg, legends, m.l, h - 18);
+    addHover(svg, node, data, x, h, m, row => {
+      const rows = series.map(s => ({ label: s.label, value: yFormat(finite(row[s.key])), color: COLORS[s.className] || COLORS.blue }));
+      if (y2Series) rows.push({ label: y2Series.label, value: y2Format(finite(row[y2Series.key])), color: COLORS[y2Series.className] || COLORS.blue });
+      return rows;
+    });
   } catch (err) {
     node.innerHTML = `<div class="chart-error">圖表無法顯示：${err.message}</div>`;
     console.error('lineChart failed', err);
@@ -144,8 +197,10 @@ export function barLineChart(node, opts) {
       const color = COLORS[l.className] || COLORS.blue;
       const d = data.map((row, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${axes.y(finite(row[l.key])).toFixed(1)}`).join(' ');
       svg.append(svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+      data.forEach((row,i)=>svg.append(svgEl('circle',{cx:x(i),cy:axes.y(finite(row[l.key])),r:2.6,fill:color,opacity:.85})));
     });
     drawLegend(svg, [...bars, ...lines], m.l, h - 18);
+    addHover(svg, node, data, x, h, m, row => [...bars, ...lines].map(s => ({ label: s.label, value: yFormat(finite(row[s.key])), color: COLORS[s.className] || COLORS.blue })));
   } catch (err) {
     node.innerHTML = `<div class="chart-error">圖表無法顯示：${err.message}</div>`;
     console.error('barLineChart failed', err);
