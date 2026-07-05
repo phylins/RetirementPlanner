@@ -23,8 +23,10 @@ function control(id, label, min, max, step, value, onChange){
   node.append(wrap);
 }
 function pctControl(parent, key, label, obj, max=100, onChange=()=>{}){
-  const wrap=document.createElement('div'); wrap.className='control-row';
-  wrap.innerHTML=`<label>${label}</label><input type="range" min="0" max="${max}" step="1" value="${obj[key].weight}"><input type="text" value="${obj[key].weight}">`;
+  const wrap=document.createElement('div'); wrap.className='control-row asset-control';
+  const name = obj[key].name || '';
+  const desc = obj[key].description || '';
+  wrap.innerHTML=`<label><b>${key}</b>${name?`<span class="asset-name">${name}</span>`:''}${desc?`<small>${desc}</small>`:''}</label><input type="range" min="0" max="${max}" step="1" value="${obj[key].weight}"><input type="text" value="${obj[key].weight}">`;
   const r=wrap.querySelector('input[type=range]'), t=wrap.querySelector('input[type=text]');
   function apply(v){ obj[key].weight=clamp(v,0,max); t.value=obj[key].weight; r.value=obj[key].weight; onChange(key); render(); }
   r.addEventListener('input',()=>apply(Number(r.value))); t.addEventListener('change',()=>apply(Number(t.value))); parent.append(wrap);
@@ -64,7 +66,15 @@ function renderTables(sim, matrix, marginal){
   table($('decision-table'), ['可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'], matrix.map((r,i)=>`<tr><td>${twMoney(r.assets,1)}</td><td>${pct(r.firstWithdrawalRate,2)}</td><td>${pct(r.successRate,1)}</td><td>${pct(r.safemax,2)}</td><td>${r.advice}</td><td>${i===0?'—':pct(matrix[i].successRate-matrix[i-1].successRate,1)}</td></tr>`));
 }
 function renderPortfolio(stats){
-  $('portfolio-summary').innerHTML=`<div class="portfolio-stat"><div><span>CAGR</span><b>${pct(stats.cagr,1)}</b></div><div><span>Volatility</span><b>${pct(stats.vol,1)}</b></div><div><span>Sharpe</span><b>${stats.sharpe.toFixed(2)}</b></div></div><h4>風險貢獻</h4><div id="risk-bars"></div>`;
+  const assetRows = stats.assets.map(a => `
+    <div class="asset-row">
+      <div><b>${a.ticker}</b><span>${a.name || ''}</span><small>${a.description || ''}</small></div>
+      <strong>${pct(a.weight*100,1)}</strong>
+    </div>`).join('');
+  $('portfolio-summary').innerHTML=`
+    <div class="portfolio-stat"><div><span>CAGR</span><b>${pct(stats.cagr,1)}</b></div><div><span>Volatility</span><b>${pct(stats.vol,1)}</b></div><div><span>Sharpe</span><b>${stats.sharpe.toFixed(2)}</b></div></div>
+    <h4>標的與目標市場</h4><div class="asset-list">${assetRows}</div>
+    <h4>風險貢獻</h4><div id="risk-bars"></div>`;
   sparkBars(document.getElementById('risk-bars'), stats.riskContrib);
 }
 function renderNotes(){
@@ -79,16 +89,35 @@ function render(){
   [...document.querySelectorAll('#scenario-buttons button')].forEach(b=>b.classList.toggle('active', b.textContent===twMoney(state.investableAssets,1)));
   const sim=simulate(state,loans,portfolio,700); const loanRows=annualLoanSchedule(loans,state.retirementYears,state.startYear); const timing=timingOptimizer(state,loans,portfolio); const matrix=decisionMatrix(state,loans,portfolio,scenarios);
   renderKpis(sim, loanRows); renderTables(sim,matrix,[]); renderPortfolio(sim.stats); renderNotes();
-  lineChart($('asset-chart'),{data:sim.percentiles,series:[{key:'p10',label:'P10 悲觀',className:'red'},{key:'p50',label:'P50 中位數',className:'blue'},{key:'p60',label:'P60 樂觀',className:'green'}],height:260});
-  barLineChart($('expense-chart'),{data:sim.sample,bars:[{key:'living',label:'生活費',className:'green'},{key:'loanPayment',label:'貸款',className:'amber'}],lines:[{key:'totalSpending',label:'總支出',className:'blue'}],height:260});
-  lineChart($('loan-chart'),{data:loanRows.map(r=>({...r,loanBalanceWan:r.loanBalance/10000})),series:[{key:'loanBalanceWan',label:'貸款餘額（萬）',className:'amber'}],yFormat:v=>`${Math.round(v).toLocaleString()}萬`,height:260});
-  lineChart($('timing-chart'),{data:timing,series:[{key:'successRate',label:'成功率（左軸）',className:'green'}],yFormat:v=>pct(v,0),y2Series:{key:'firstWithdrawalRate',label:'第一年提領率（右軸）',className:'blue'},y2Format:v=>pct(v,1),height:260});
+  requestAnimationFrame(() => {
+    lineChart($('asset-chart'),{data:sim.percentiles,series:[{key:'p10',label:'P10 悲觀',className:'red'},{key:'p50',label:'P50 中位數',className:'blue'},{key:'p60',label:'P60 樂觀',className:'green'}],height:260});
+    barLineChart($('expense-chart'),{data:sim.sample,bars:[{key:'living',label:'生活費',className:'green'},{key:'loanPayment',label:'貸款',className:'amber'}],lines:[{key:'totalSpending',label:'總支出',className:'blue'}],height:260});
+    lineChart($('loan-chart'),{data:loanRows.map(r=>({...r,loanBalanceWan:r.loanBalance/10000})),series:[{key:'loanBalanceWan',label:'貸款餘額（萬）',className:'amber'}],yFormat:v=>`${Math.round(v).toLocaleString()}萬`,height:260});
+    lineChart($('timing-chart'),{data:timing,series:[{key:'successRate',label:'成功率（左軸）',className:'green'}],yFormat:v=>pct(v,0),y2Series:{key:'firstWithdrawalRate',label:'第一年提領率（右軸）',className:'blue'},y2Format:v=>pct(v,1),height:260});
+  });
+}
+function showSaveModal(){
+  const modal = $('save-modal');
+  if (!modal) return;
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden','false');
+  const close = $('save-modal-close');
+  if (close) close.focus();
+}
+function hideSaveModal(){
+  const modal = $('save-modal');
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden','true');
 }
 async function init(){
   const [assumptions, loanData, port, scen] = await Promise.all([loadJson('./data/assumptions.json'),loadJson('./data/loans.json'),loadJson('./data/portfolio.json'),loadJson('./data/scenarios.json')]);
   state = { ...assumptions, ...(loadState()?.state || {}) }; loans=loanData; portfolio = loadState()?.portfolio || port; scenarios=scen;
   setupControls(); render();
-  $('save-btn').onclick=()=>{ saveState({state,portfolio}); alert('已儲存到本機瀏覽器。'); };
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  $('save-btn').onclick=()=>{ saveState({state,portfolio}); showSaveModal(); };
+  $('save-modal-close')?.addEventListener('click', hideSaveModal);
+  $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.4.0').catch(()=>{});
 }
 init();
