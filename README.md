@@ -1,17 +1,50 @@
-# Retirement Planner v3.9 PWA
+# Retirement Planner v5.0 PWA
 
-## 更新重點
+## v5.0 更新重點
 
-- 新增 Dynamic COLA Freeze 條件選擇欄位。
-- 支援三種 Freeze 規則：
-  - 寬鬆：通膨高、報酬差、提領率高，任一條件即暫停調升生活費。
-  - 平衡：高通膨且報酬差同時發生，或提領率過高，才暫停調升生活費。
-  - 嚴格：只有提領率過高才暫停調升生活費。
-- 預設為「平衡」，較符合退休現金流規劃，不會因單一通膨高就過度壓低生活費。
-- 快取版本更新到 v3.9.0。
+- 版本號正式升級為 `v5.0.0`，不再使用 4.x。
+- 左側控制欄取消內部捲軸，全部欄位跟著主頁面一起捲動。
+- 頁面右上新增版本與最後更新時間，方便確認 GitHub Pages / PWA 是否抓到新版。
+- 新增 CSV 匯出：
+  - 年度支出與貸款明細
+  - 退休決策矩陣
+- 新增「模型診斷」區，快速指出目前退休壓力來源：提領壓力、貸款壓力、高波動資產與退休門檻。
+- 保留 v3.9 / v4.0 功能：淨資產試算、Dynamic COLA Freeze 條件、Portfolio Engine、退休決策矩陣、年度支出與貸款明細、PWA 快取版本更新。
 
-## 使用
+## 使用方式
 
-解壓縮後把所有檔案覆蓋到 GitHub repo 根目錄，確認 index.html 第一行包含 `v3.9 root index`，再 commit。
+本機測試：
 
-GitHub Pages 更新後若仍看到舊版，請 Ctrl+F5 或清除 Service Worker 快取。
+```bash
+python -m http.server 8000
+```
+
+或：
+
+```bash
+python3 -m http.server 8000
+```
+
+瀏覽器開：
+
+```text
+http://localhost:8000
+```
+
+## GitHub Pages 更新方式
+
+1. 解壓縮 ZIP。
+2. 將解壓後的所有檔案與資料夾覆蓋到 GitHub repo 根目錄。
+3. 確認根目錄的 `index.html` 第一行是：
+
+```html
+<!-- Retirement Planner v5.0 root index...
+```
+
+4. Commit / Push。
+5. 等 GitHub Actions 的 `pages build and deployment` 變綠色成功。
+6. 開網站後按 `Ctrl + F5`，或清除 PWA / Service Worker 快取。
+
+## 注意
+
+如果打開 GitHub Pages 看到 JavaScript 文字而不是網頁，代表 repo 根目錄的 `index.html` 被錯誤覆蓋成其他 JS 檔案。請重新覆蓋本 ZIP 根目錄的 `index.html`。

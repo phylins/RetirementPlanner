@@ -20,6 +20,9 @@ let state, loans, scenarios, portfolio;
 const SIM_RUNS = 360;
 const SIM_SEED = 202600;
 let contributionSort = { key: 'riskShare', dir: 'desc' };
+let currentSim = null;
+let currentMatrix = null;
+let currentLoanRows = null;
 function netWorthFromInvestable(v){ return Number(v || 0) - Number(state?.netWorthGap || 0); }
 function investableFromNetWorth(v){ return Number(v || 0) + Number(state?.netWorthGap || 0); }
 async function loadJson(path){ return fetch(path).then(r=>r.json()); }
@@ -137,6 +140,54 @@ function renderPortfolio(stats){
     });
   });
 }
+
+function csvEscape(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g,'""')}"` : text;
+}
+function downloadCsv(filename, headers, rows) {
+  const csv = [headers.map(csvEscape).join(','), ...rows.map(row => row.map(csvEscape).join(','))].join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function exportCashflowCsv() {
+  if (!currentSim) return;
+  const headers = ['年份','年齡','年初資產','年底資產','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額','通膨','報酬','Freeze'];
+  const rows = currentSim.sample.map(r => [r.year,r.age,Math.round(r.beginAssets),Math.round(r.assets),Math.round(r.living),Math.round(r.loanPayment),Math.round(r.totalSpending),r.withdrawalRate.toFixed(2),Math.round(r.investmentReturn),Math.round(r.contribution),Math.round(r.loanBalance),r.inflation?.toFixed?.(2) ?? '',r.ret?.toFixed?.(2) ?? '',r.freeze ? 'Y':'N']);
+  downloadCsv('retirement_cashflow_v5_0.csv', headers, rows);
+}
+function exportDecisionCsv() {
+  if (!currentMatrix) return;
+  const headers = ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'];
+  const rows = currentMatrix.map((r,i) => [Math.round(netWorthFromInvestable(r.assets)),Math.round(r.assets),r.firstWithdrawalRate.toFixed(2),r.successRate.toFixed(1),r.safemax.toFixed(2),String(r.advice).replace(/^[^\s]+\s*/,''),i===0?'':(currentMatrix[i].successRate-currentMatrix[i-1].successRate).toFixed(1)]);
+  downloadCsv('retirement_decision_matrix_v5_0.csv', headers, rows);
+}
+function renderDiagnostics(sim, matrix) {
+  const first = sim.sample[0];
+  const wr = first.totalSpending / Math.max(state.investableAssets,1) * 100;
+  const gap = wr - sim.safemax;
+  const maxLoan = Math.max(...sim.sample.map(r => r.loanPayment));
+  const loanPressure = maxLoan / Math.max(first.totalSpending,1) * 100;
+  const highRiskAssets = sim.stats.assets.filter(a => ['00631L','SOXX'].includes(a.ticker)).reduce((s,a)=>s+a.weight,0)*100;
+  const decisionRow = matrix.find(r => Math.abs(r.assets - state.investableAssets) < 10000000) || matrix[0];
+  const items = [
+    {label:'提領壓力', value: gap > 1 ? '偏高' : gap > 0 ? '接近上限' : '安全', detail:`第一年提領率 ${pct(wr,2)}，SAFE ${pct(sim.safemax,2)}，差距 ${pct(gap,2)}。`},
+    {label:'貸款壓力', value: loanPressure > 45 ? '偏高' : loanPressure > 30 ? '中等' : '可控', detail:`第一年貸款約佔總支出 ${pct(loanPressure,1)}，貸款自然遞減後提領壓力會下降。`},
+    {label:'高波動資產', value: highRiskAssets > 25 ? '偏高' : highRiskAssets > 15 ? '中等' : '較低', detail:`00631L + SOXX 約佔整體投資 ${pct(highRiskAssets,1)}，是報酬與波動的主要來源。`},
+    {label:'退休門檻', value: decisionRow?.advice || '—', detail:`目前條件下成功率約 ${pct(sim.successRate,1)}。若想提高成功率，可降低生活費、增加起始資產或降低高波動部位。`}
+  ];
+  const panel = $('diagnostics-panel');
+  if (!panel) return;
+  panel.innerHTML = items.map(it => `<div class="diag-item"><span>${it.label}</span><b>${it.value}</b><p>${it.detail}</p></div>`).join('');
+}
+
 function renderNotes(){
   const mode=modes.find(m=>m[0]===state.marketMode)?.[1]; const strat=strategies.find(s=>s[0]===state.spendingStrategy)?.[1];
   $('model-notes').innerHTML=`
@@ -148,7 +199,8 @@ function renderNotes(){
 function render(){
   [...document.querySelectorAll('#scenario-buttons button')].forEach(b=>{ const n=Number(b.dataset.netWorth||0); b.classList.toggle('active', Math.abs(n-netWorthFromInvestable(state.investableAssets))<10000000); });
   const sim=simulate(state,loans,portfolio,SIM_RUNS,SIM_SEED); const loanRows=annualLoanSchedule(loans,state.retirementYears,state.startYear); const timing=timingOptimizer(state,loans,portfolio,{runs:SIM_RUNS,seedBase:SIM_SEED}); const matrix=decisionMatrix(state,loans,portfolio,scenarios.map(investableFromNetWorth),{runs:SIM_RUNS,seedBase:SIM_SEED});
-  renderKpis(sim, loanRows); renderTables(sim,matrix,[]); renderPortfolio(sim.stats); renderNotes();
+  currentSim = sim; currentMatrix = matrix; currentLoanRows = loanRows;
+  renderKpis(sim, loanRows); renderTables(sim,matrix,[]); renderPortfolio(sim.stats); renderDiagnostics(sim, matrix); renderNotes();
   requestAnimationFrame(() => {
     lineChart($('asset-chart'),{data:sim.percentiles,series:[{key:'p10',label:'P10 悲觀',className:'red'},{key:'p50',label:'P50 中位數',className:'blue'},{key:'p60',label:'P60 樂觀',className:'green'}],height:260,yMin:0,yMax:1200000000,yStep:200000000});
     barLineChart($('expense-chart'),{data:sim.sample,bars:[{key:'living',label:'生活費',className:'green'},{key:'loanPayment',label:'貸款',className:'amber'}],lines:[{key:'totalSpending',label:'總支出',className:'blue'}],height:260,yMin:0,yMax:12000000,yStep:2000000});
@@ -175,9 +227,11 @@ async function init(){
   state = { ...assumptions, ...(loadState()?.state || {}) }; loans=loanData; portfolio = loadState()?.portfolio || port; scenarios=scen;
   setupControls(); render();
   $('save-btn').onclick=()=>{ saveState({state,portfolio}); showSaveModal(); };
+  $('export-cashflow-btn')?.addEventListener('click', exportCashflowCsv);
+  $('export-decision-btn')?.addEventListener('click', exportDecisionCsv);
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.9.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.0.0').catch(()=>{});
 }
 init();

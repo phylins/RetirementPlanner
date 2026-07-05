@@ -35,3 +35,25 @@
 .notes-grid .model-notes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.notes-grid .note-item{margin:0}
 @media(max-width:1600px){.portfolio-full #portfolio-summary{grid-template-columns:1fr}.portfolio-full #portfolio-summary h4:first-of-type,.portfolio-full .asset-list,.portfolio-full #portfolio-summary h4:nth-of-type(2),.portfolio-full .contrib-table-wrap{grid-column:auto;grid-row:auto}.notes-grid .model-notes{grid-template-columns:1fr 1fr}}
 @media(max-width:900px){.notes-grid .model-notes{grid-template-columns:1fr}.scenario-buttons{grid-template-columns:repeat(2,1fr)}}
+
+/* v5.0: remove internal scrollbar from the left control panel.
+   The whole page scrolls as one document, so all left-side fields are visible in the normal page flow. */
+.app-shell{align-items:start;}
+.sidebar{height:auto !important; max-height:none !important; overflow:visible !important; position:static !important; align-self:start;}
+.main{align-self:start;}
+@media(min-width:1301px){
+  .app-shell{grid-template-columns:320px minmax(0,1fr);}
+}
+@media(min-width:2200px){
+  .app-shell{grid-template-columns:360px minmax(0,1fr);}
+}
+/* Make the left controls easier to scan when they are fully expanded. */
+.control-block{padding-top:16px;padding-bottom:16px;}
+.control-block h2{font-size:16px;color:#102033;}
+.control-row label,.field span,.toggle span{font-size:13px;}
+.term-help{font-size:13px;line-height:1.55;}
+
+/* v5.0: product workflow polish */
+.topbar{gap:18px;align-items:center}.topbar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.version-badge{display:grid;gap:1px;text-align:right;color:#52627a;font-size:12px;min-width:120px}.version-badge b{font-size:15px;color:#102033}.secondary{border:1px solid #d7e0ee;background:#fff;color:#102033;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer}.secondary:hover{border-color:#165dff;color:#165dff;background:#f7faff}.diagnostics-panel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.diag-item{border:1px solid #e3eafb;background:#fbfdff;border-radius:14px;padding:14px}.diag-item span{display:block;color:#64748b;font-size:12px;font-weight:900}.diag-item b{display:block;font-size:22px;color:#102033;margin:4px 0 6px}.diag-item p{margin:0;color:#52627a;font-size:13px;line-height:1.45}.brand p{font-weight:800;color:#64748b}
+@media(max-width:1600px){.diagnostics-panel{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar-actions{justify-content:flex-start}.version-badge{text-align:left}}
+@media(max-width:900px){.diagnostics-panel{grid-template-columns:1fr}.topbar-actions{width:100%}.secondary,.primary{width:100%}.version-badge{width:100%}}
