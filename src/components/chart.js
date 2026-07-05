@@ -172,8 +172,9 @@ export function lineChart(node, opts) {
 }
 export function barLineChart(node, opts) {
   try {
-    const { data = [], bars = [], lines = [], xKey = 'year', yFormat = twMoney, height = 280, yMin = null, yMax = null, yStep = null } = opts || {};
-    const { svg, w, h, m } = makeSvg(node, height, false);
+    const { data = [], bars = [], lines = [], xKey = 'year', yFormat = twMoney, height = 280, yMin = null, yMax = null, yStep = null,
+      y2Series = null, y2Format = pct, y2Min = null, y2Max = null, y2Step = null } = opts || {};
+    const { svg, w, h, m } = makeSvg(node, height, Boolean(y2Series));
     if (!data.length) return;
     const allKeys = [...bars, ...lines];
     const vals = [];
@@ -199,8 +200,31 @@ export function barLineChart(node, opts) {
       svg.append(svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
       data.forEach((row,i)=>svg.append(svgEl('circle',{cx:x(i),cy:axes.y(finite(row[l.key])),r:2.6,fill:color,opacity:.85})));
     });
-    drawLegend(svg, [...bars, ...lines], m.l, h - 18);
-    addHover(svg, node, data, x, h, m, row => [...bars, ...lines].map(s => ({ label: s.label, value: yFormat(finite(row[s.key])), color: COLORS[s.className] || COLORS.blue })));
+    const legends = [...bars, ...lines];
+    if (y2Series) {
+      const vals2 = data.map(d => finite(d[y2Series.key]));
+      const r2 = niceRange(vals2, y2Min ?? 0, y2Max ?? Math.max(10, Math.ceil(Math.max(...vals2, 1))));
+      const plotH = h - m.t - m.b;
+      const y2Raw = v => h - m.b - ((v - r2.min) / (r2.max - r2.min)) * plotH;
+      const y2 = v => y2Raw(clampNum(v, r2.min, r2.max));
+      svg.append(svgEl('line', { x1: w - m.r, y1: m.t, x2: w - m.r, y2: h - m.b, class: 'axis' }));
+      const r2Ticks = y2Step ? fixedTickValues(r2.min, r2.max, y2Step) : fixedTickValues(r2.min, r2.max, (r2.max-r2.min)/4);
+      r2Ticks.forEach(val => {
+        const yy = y2Raw(val);
+        svg.append(svgEl('text', { x: w - m.r + 12, y: yy + 4, 'text-anchor': 'start', class: 'axis-label' }, y2Format(val)));
+      });
+      const color = COLORS[y2Series.className] || COLORS.red;
+      const d = data.map((row, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y2(finite(row[y2Series.key])).toFixed(1)}`).join(' ');
+      svg.append(svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': '5 4' }));
+      data.forEach((row,i)=>svg.append(svgEl('circle',{cx:x(i),cy:y2(finite(row[y2Series.key])),r:2.6,fill:color,opacity:.85})));
+      legends.push(y2Series);
+    }
+    drawLegend(svg, legends, m.l, h - 18);
+    addHover(svg, node, data, x, h, m, row => {
+      const rows = [...bars, ...lines].map(s => ({ label: s.label, value: yFormat(finite(row[s.key])), color: COLORS[s.className] || COLORS.blue }));
+      if (y2Series) rows.push({ label: y2Series.label, value: y2Format(finite(row[y2Series.key])), color: COLORS[y2Series.className] || COLORS.red });
+      return rows;
+    });
   } catch (err) {
     node.innerHTML = `<div class="chart-error">圖表無法顯示：${err.message}</div>`;
     console.error('barLineChart failed', err);

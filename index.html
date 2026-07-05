@@ -1,10 +1,10 @@
-<!-- Retirement Planner v5.0 root index. If you see JavaScript text instead of the app, repo root index.html was overwritten incorrectly. -->
+<!-- Retirement Planner v5.1 root index. If you see JavaScript text instead of the app, repo root index.html was overwritten incorrectly. -->
 <!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Retirement Planner v5.0</title>
+  <title>Retirement Planner v5.1</title>
   <link rel="manifest" href="./public/manifest.json" />
   <link rel="stylesheet" href="./src/styles.css?v=5.0.0" />
   <meta name="theme-color" content="#165dff" />
@@ -16,7 +16,7 @@
         <div class="logo">RP</div>
         <div>
           <h1>Retirement Planner</h1>
-          <p>v5.0 PWA</p>
+          <p>v5.1 PWA</p>
         </div>
       </div>
       <section class="control-block compact scenario-top">
@@ -70,7 +70,7 @@
           <p>41歲起算，預設 65% 股票 / 30% 債券 / 5% 現金，股票內含 00631L 與 SOXX。</p>
         </div>
         <div class="topbar-actions">
-          <div class="version-badge"><b>v5.0</b><span>最後更新：2026-07-05</span></div>
+          <div class="version-badge"><b>v5.1</b><span>最後更新：2026-07-05</span></div>
           <button id="export-cashflow-btn" class="secondary">匯出年度明細 CSV</button>
           <button id="export-decision-btn" class="secondary">匯出決策矩陣 CSV</button>
           <button id="save-btn" class="primary">儲存設定</button>
@@ -79,7 +79,7 @@
       <section class="kpi-grid" id="kpi-grid"></section>
       <section class="chart-grid">
         <div class="card"><div class="card-head"><h3>資產曲線</h3><p>P10 / P50 / P60，台灣單位顯示</p></div><div id="asset-chart"></div></div>
-        <div class="card"><div class="card-head"><h3>年度支出與貸款</h3><p>生活費、貸款與總支出</p></div><div id="expense-chart"></div></div>
+        <div class="card"><div class="card-head"><h3>年度支出與貸款</h3><p>生活費、貸款、總支出與通膨率（右軸）</p></div><div id="expense-chart"></div></div>
         <div class="card"><div class="card-head"><h3>貸款餘額</h3><p>單位：萬元</p></div><div id="loan-chart"></div></div>
         <div class="card"><div class="card-head"><h3>退休時間最佳化</h3><p>雙 Y 軸：左成功率，右第一年提領率</p></div><div id="timing-chart"></div></div>
       </section>

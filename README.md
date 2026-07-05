@@ -1,8 +1,8 @@
-# Retirement Planner v5.0 PWA
+# Retirement Planner v5.1 PWA
 
-## v5.0 更新重點
+## v5.1 更新重點
 
-- 版本號正式升級為 `v5.0.0`，不再使用 4.x。
+- 版本號正式升級為 `v5.1.0`，不再使用 4.x。
 - 左側控制欄取消內部捲軸，全部欄位跟著主頁面一起捲動。
 - 頁面右上新增版本與最後更新時間，方便確認 GitHub Pages / PWA 是否抓到新版。
 - 新增 CSV 匯出：
@@ -38,7 +38,7 @@ http://localhost:8000
 3. 確認根目錄的 `index.html` 第一行是：
 
 ```html
-<!-- Retirement Planner v5.0 root index...
+<!-- Retirement Planner v5.1 root index...
 ```
 
 4. Commit / Push。
@@ -48,3 +48,13 @@ http://localhost:8000
 ## 注意
 
 如果打開 GitHub Pages 看到 JavaScript 文字而不是網頁，代表 repo 根目錄的 `index.html` 被錯誤覆蓋成其他 JS 檔案。請重新覆蓋本 ZIP 根目錄的 `index.html`。
+
+
+## v5.1 更新
+
+- 年度生活費預設值改為 NT$500 萬。
+- 年度支出與貸款圖表新增右側 Y 軸，顯示每年通膨率。
+- 年度支出明細新增通膨與 Freeze 欄位，方便檢查生活費是否因通膨或 Dynamic COLA Freeze 調整。
+- 圖表 hover tooltip 會一起顯示通膨率。
+
+注意：如果瀏覽器已經儲存過舊設定，且生活費仍為舊版預設 600 萬，v5.1 會自動遷移成 500 萬；若你曾手動改成其他數字則會保留。

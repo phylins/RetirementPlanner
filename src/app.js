@@ -19,6 +19,7 @@ const freezeRules = [
 let state, loans, scenarios, portfolio;
 const SIM_RUNS = 360;
 const SIM_SEED = 202600;
+const APP_VERSION = '5.1.0';
 let contributionSort = { key: 'riskShare', dir: 'desc' };
 let currentSim = null;
 let currentMatrix = null;
@@ -83,7 +84,7 @@ function renderKpis(sim, loanRows){
 }
 function table(node, headers, rows){ node.innerHTML=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`; }
 function renderTables(sim, matrix, marginal){
-  table($('cashflow-table'), ['年份','年齡','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額'], sim.sample.map(r=>`<tr><td>${r.year}</td><td>${r.age}</td><td>${twMoney(r.living)}</td><td>${twMoney(r.loanPayment)}</td><td>${twMoney(r.totalSpending)}</td><td>${pct(r.withdrawalRate,2)}</td><td>${twMoney(r.investmentReturn)}</td><td>${twMoney(r.contribution)}</td><td>${twWan(r.loanBalance)}</td></tr>`));
+  table($('cashflow-table'), ['年份','年齡','生活費','貸款','總支出','通膨','Freeze','提領率','投資報酬','新增投資','貸款餘額'], sim.sample.map(r=>`<tr><td>${r.year}</td><td>${r.age}</td><td>${twMoney(r.living)}</td><td>${twMoney(r.loanPayment)}</td><td>${twMoney(r.totalSpending)}</td><td>${pct(r.inflation,1)}</td><td>${r.freeze ? 'Y' : ''}</td><td>${pct(r.withdrawalRate,2)}</td><td>${twMoney(r.investmentReturn)}</td><td>${twMoney(r.contribution)}</td><td>${twWan(r.loanBalance)}</td></tr>`));
   table($('decision-table'), ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'], matrix.map((r,i)=>`<tr><td>${twMoney(netWorthFromInvestable(r.assets),1)}</td><td>${twMoney(r.assets,1)}</td><td>${pct(r.firstWithdrawalRate,2)}</td><td>${pct(r.successRate,1)}</td><td>${pct(r.safemax,2)}</td><td>${r.advice}</td><td>${i===0?'—':pct(matrix[i].successRate-matrix[i-1].successRate,1)}</td></tr>`));
 }
 function buildContributionRows(stats) {
@@ -161,13 +162,13 @@ function exportCashflowCsv() {
   if (!currentSim) return;
   const headers = ['年份','年齡','年初資產','年底資產','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額','通膨','報酬','Freeze'];
   const rows = currentSim.sample.map(r => [r.year,r.age,Math.round(r.beginAssets),Math.round(r.assets),Math.round(r.living),Math.round(r.loanPayment),Math.round(r.totalSpending),r.withdrawalRate.toFixed(2),Math.round(r.investmentReturn),Math.round(r.contribution),Math.round(r.loanBalance),r.inflation?.toFixed?.(2) ?? '',r.ret?.toFixed?.(2) ?? '',r.freeze ? 'Y':'N']);
-  downloadCsv('retirement_cashflow_v5_0.csv', headers, rows);
+  downloadCsv('retirement_cashflow_v5_1.csv', headers, rows);
 }
 function exportDecisionCsv() {
   if (!currentMatrix) return;
   const headers = ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'];
   const rows = currentMatrix.map((r,i) => [Math.round(netWorthFromInvestable(r.assets)),Math.round(r.assets),r.firstWithdrawalRate.toFixed(2),r.successRate.toFixed(1),r.safemax.toFixed(2),String(r.advice).replace(/^[^\s]+\s*/,''),i===0?'':(currentMatrix[i].successRate-currentMatrix[i-1].successRate).toFixed(1)]);
-  downloadCsv('retirement_decision_matrix_v5_0.csv', headers, rows);
+  downloadCsv('retirement_decision_matrix_v5_1.csv', headers, rows);
 }
 function renderDiagnostics(sim, matrix) {
   const first = sim.sample[0];
@@ -192,7 +193,7 @@ function renderNotes(){
   const mode=modes.find(m=>m[0]===state.marketMode)?.[1]; const strat=strategies.find(s=>s[0]===state.spendingStrategy)?.[1];
   $('model-notes').innerHTML=`
   <div class="note-item"><b>🧭 市場模式：${mode}</b><br>可切換 Historical / Worst / Regime / Extreme。預設 Regime 用牛市、熊市、復甦與高通膨狀態交替，避免純常態 Monte Carlo 過度產生不合理連續崩盤。</div>
-  <div class="note-item"><b>💸 支出策略：${strat}</b><br>Spending Smile 預設：退休前期小幅增加，中後期趨於平緩或下降，晚年保留醫療支出上升空間。</div>
+  <div class="note-item"><b>💸 支出策略：${strat}</b><br>Spending Smile 預設：生活費不是每年完整跟 CPI 上調；退休前 10 年最多按 1.2% 小幅增加，中期可能持平或下降，晚年再預留醫療支出上升空間。若啟用 Freeze，符合條件時該年生活費不調升。</div>
   <div class="note-item"><b>🛡️ Dynamic COLA Freeze</b><br>可選 Freeze 條件：寬鬆＝通膨高、報酬差、提領率高任一觸發；平衡＝高通膨且負報酬，或提領率過高；嚴格＝只有提領率過高才暫停調升生活費。</div>
   <div class="note-item"><b>📈 股票配置</b><br>股票 65% 預設拆成：00631L 20%、VOO/VTI/VXUS 合計 60%、SOXX 20%。整體資產約為 00631L 13%、SOXX 13%、美國/全球核心 ETF 39%。</div>`;
 }
@@ -203,7 +204,7 @@ function render(){
   renderKpis(sim, loanRows); renderTables(sim,matrix,[]); renderPortfolio(sim.stats); renderDiagnostics(sim, matrix); renderNotes();
   requestAnimationFrame(() => {
     lineChart($('asset-chart'),{data:sim.percentiles,series:[{key:'p10',label:'P10 悲觀',className:'red'},{key:'p50',label:'P50 中位數',className:'blue'},{key:'p60',label:'P60 樂觀',className:'green'}],height:260,yMin:0,yMax:1200000000,yStep:200000000});
-    barLineChart($('expense-chart'),{data:sim.sample,bars:[{key:'living',label:'生活費',className:'green'},{key:'loanPayment',label:'貸款',className:'amber'}],lines:[{key:'totalSpending',label:'總支出',className:'blue'}],height:260,yMin:0,yMax:12000000,yStep:2000000});
+    barLineChart($('expense-chart'),{data:sim.sample,bars:[{key:'living',label:'生活費',className:'green'},{key:'loanPayment',label:'貸款',className:'amber'}],lines:[{key:'totalSpending',label:'總支出',className:'blue'}],y2Series:{key:'inflation',label:'通膨率（右軸）',className:'red'},y2Format:v=>pct(v,1),y2Min:0,y2Max:10,y2Step:2,height:260,yMin:0,yMax:12000000,yStep:2000000});
     lineChart($('loan-chart'),{data:loanRows.map(r=>({...r,loanBalanceWan:r.loanBalance/10000})),series:[{key:'loanBalanceWan',label:'貸款餘額（萬）',className:'amber'}],yFormat:v=>`${Math.round(v).toLocaleString()}萬`,height:260,yMin:0,yMax:6000,yStep:1000});
     lineChart($('timing-chart'),{data:timing,series:[{key:'successRate',label:'成功率（左軸）',className:'green'}],yFormat:v=>pct(v,0),yMin:0,yMax:100,yStep:20,y2Series:{key:'firstWithdrawalRate',label:'第一年提領率（右軸）',className:'blue'},y2Format:v=>pct(v,1),y2Min:0,y2Max:10,y2Step:2,height:260});
   });
@@ -224,14 +225,19 @@ function hideSaveModal(){
 }
 async function init(){
   const [assumptions, loanData, port, scen] = await Promise.all([loadJson('./data/assumptions.json'),loadJson('./data/loans.json'),loadJson('./data/portfolio.json'),loadJson('./data/scenarios.json')]);
-  state = { ...assumptions, ...(loadState()?.state || {}) }; loans=loanData; portfolio = loadState()?.portfolio || port; scenarios=scen;
+  const saved = loadState();
+  state = { ...assumptions, ...(saved?.state || {}) };
+  // v5.1 changes default living expense from 600萬 to 500萬.
+  // If an older saved profile still has the old untouched default 600萬, migrate it once.
+  if (!saved?.version && state.annualLivingExpense === 6000000) state.annualLivingExpense = assumptions.annualLivingExpense;
+  loans=loanData; portfolio = saved?.portfolio || port; scenarios=scen;
   setupControls(); render();
-  $('save-btn').onclick=()=>{ saveState({state,portfolio}); showSaveModal(); };
+  $('save-btn').onclick=()=>{ saveState({version: APP_VERSION, state, portfolio}); showSaveModal(); };
   $('export-cashflow-btn')?.addEventListener('click', exportCashflowCsv);
   $('export-decision-btn')?.addEventListener('click', exportDecisionCsv);
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.0.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.1.0').catch(()=>{});
 }
 init();
