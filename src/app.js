@@ -12,6 +12,8 @@ const modes = [
 ];
 const strategies = [['classic','Classic COLA'],['dynamic','Dynamic COLA'],['smile','Spending Smile'],['guardrails','Guardrails']];
 let state, loans, scenarios, portfolio;
+const SIM_RUNS = 360;
+const SIM_SEED = 202600;
 let contributionSort = { key: 'riskShare', dir: 'desc' };
 function netWorthFromInvestable(v){ return Number(v || 0) - Number(state?.netWorthGap || 0); }
 function investableFromNetWorth(v){ return Number(v || 0) + Number(state?.netWorthGap || 0); }
@@ -139,7 +141,7 @@ function renderNotes(){
 }
 function render(){
   [...document.querySelectorAll('#scenario-buttons button')].forEach(b=>{ const n=Number(b.dataset.netWorth||0); b.classList.toggle('active', Math.abs(n-netWorthFromInvestable(state.investableAssets))<10000000); });
-  const sim=simulate(state,loans,portfolio,700); const loanRows=annualLoanSchedule(loans,state.retirementYears,state.startYear); const timing=timingOptimizer(state,loans,portfolio); const matrix=decisionMatrix(state,loans,portfolio,scenarios.map(investableFromNetWorth));
+  const sim=simulate(state,loans,portfolio,SIM_RUNS,SIM_SEED); const loanRows=annualLoanSchedule(loans,state.retirementYears,state.startYear); const timing=timingOptimizer(state,loans,portfolio,{runs:SIM_RUNS,seedBase:SIM_SEED}); const matrix=decisionMatrix(state,loans,portfolio,scenarios.map(investableFromNetWorth),{runs:SIM_RUNS,seedBase:SIM_SEED});
   renderKpis(sim, loanRows); renderTables(sim,matrix,[]); renderPortfolio(sim.stats); renderNotes();
   requestAnimationFrame(() => {
     lineChart($('asset-chart'),{data:sim.percentiles,series:[{key:'p10',label:'P10 悲觀',className:'red'},{key:'p50',label:'P50 中位數',className:'blue'},{key:'p60',label:'P60 樂觀',className:'green'}],height:260,yMin:0,yMax:1200000000,yStep:200000000});
@@ -170,6 +172,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.6.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=3.7.0').catch(()=>{});
 }
 init();

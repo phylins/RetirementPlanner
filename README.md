@@ -1,37 +1,17 @@
-# Retirement Planner v3.6 PWA
+# Retirement Planner v3.7 PWA
 
-## v3.6 更新
+本版修正與調整：
 
-- 圖表新增 hover tooltip：滑鼠移到資料點附近會顯示該年份與各條線/柱狀數值。
-- 退休決策矩陣改成完整展開顯示，不再使用內部捲軸。
-- 在左側控制區新增 Dynamic COLA Freeze、Shiller CAPE、Spending Smile 中文簡介。
-- Portfolio Engine 將 CAGR 貢獻、波動/風險貢獻、Sharpe 貢獻整合成同一張表格。
-- Portfolio Engine 表格欄位可點選排序，支援升冪/降冪。
-- PWA cache 版本更新到 v3.6.0。
+- 「快速情境」改名為「淨資產試算」。
+- 修正退休成功率數據不一致問題：首頁 KPI、退休時間最佳化 2026、退休決策矩陣改用同一組試算條件、同一組 deterministic seed 與同一回合數。
+- 第一年提領率改用「年初可投資資產」作為分母，避免用年末資產造成數字偏差。
+- 決策矩陣仍會依目前模式、支出策略、Dynamic COLA、股債配置、生活費、CAPE 與貸款條件同步重算。
+- 版本與快取更新至 v3.7.0。
 
 ## 更新到 GitHub Pages
 
 1. 解壓縮 ZIP。
-2. 將解壓後的 `index.html`, `sw.js`, `src/`, `data/`, `public/`, `package.json`, `README.md` 覆蓋到 GitHub repo 根目錄。
-3. 確認 repo 根目錄的 `index.html` 第一行包含 `v3.6 root index`。
-4. Commit changes。
-5. 等 GitHub Actions / Pages 部署成功。
-6. 開啟網站後按 `Ctrl + F5`。若仍顯示舊版，請清除網站資料或 unregister service worker。
-
-## 本機測試
-
-```bash
-python -m http.server 8000
-```
-
-或：
-
-```bash
-python3 -m http.server 8000
-```
-
-瀏覽器開啟：
-
-```text
-http://localhost:8000
-```
+2. 將所有檔案覆蓋到 GitHub repo 根目錄。
+3. 確認根目錄 `index.html` 第一行包含 `v3.7 root index`。
+4. Commit 後等待 Pages deployment 成功。
+5. 若仍顯示舊版，請 `Ctrl + F5`，或清除 Service Worker / site data。
