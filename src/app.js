@@ -19,7 +19,7 @@ const freezeRules = [
 let state, loans, scenarios, portfolio;
 const SIM_RUNS = 360;
 const SIM_SEED = 202600;
-const APP_VERSION = '5.2.0';
+const APP_VERSION = '5.3.0';
 let contributionSort = { key: 'riskShare', dir: 'desc' };
 let currentSim = null;
 let currentMatrix = null;
@@ -36,6 +36,56 @@ function control(id, label, min, max, step, value, onChange){
   text.addEventListener('change',()=>{ const v=clamp(parseNumberInput(text.value),min,max); text.value=numberInput(v); range.value=v; onChange(v); render(); });
   node.append(wrap);
 }
+
+function numberOnlyControl(id, label, min, max, value, onChange){
+  const node=$(id); node.innerHTML='';
+  const wrap=document.createElement('div'); wrap.className='control-row number-only';
+  wrap.innerHTML=`<label>${label}</label><input type="text" value="${numberInput(value)}">`;
+  const text=wrap.querySelector('input[type=text]');
+  text.addEventListener('change',()=>{ const v=clamp(parseNumberInput(text.value),min,max); text.value=numberInput(v); onChange(v); render(); });
+  node.append(wrap);
+}
+function setControlValue(id, value){
+  const node=$(id); if(!node) return;
+  const range=node.querySelector('input[type=range]');
+  const text=node.querySelector('input[type=text]');
+  const rounded = Number(Number(value).toFixed(1));
+  if(range) range.value = String(rounded);
+  if(text) text.value = numberInput(rounded);
+}
+function syncTopLevelControls(){
+  setControlValue('input-stock', portfolio.topLevel.stock);
+  setControlValue('input-bond', portfolio.topLevel.bond);
+  setControlValue('input-cash', portfolio.topLevel.cash);
+}
+function setStockShare(newStock){
+  const cash = clamp(Number(portfolio.topLevel.cash || 0), 0, 95);
+  const budget = Math.max(0, 100 - cash);
+  const stock = clamp(Number(newStock || 0), 0, budget);
+  const bond = Math.max(0, budget - stock);
+  rebalanceTopLevel(portfolio, Number(stock.toFixed(1)), Number(bond.toFixed(1)), Number(cash.toFixed(1)));
+  syncTopLevelControls();
+}
+function setBondShare(newBond){
+  const cash = clamp(Number(portfolio.topLevel.cash || 0), 0, 95);
+  const budget = Math.max(0, 100 - cash);
+  const bond = clamp(Number(newBond || 0), 0, budget);
+  const stock = Math.max(0, budget - bond);
+  rebalanceTopLevel(portfolio, Number(stock.toFixed(1)), Number(bond.toFixed(1)), Number(cash.toFixed(1)));
+  syncTopLevelControls();
+}
+function setCashShare(newCash){
+  const oldStock = Number(portfolio.topLevel.stock || 0);
+  const oldBond = Number(portfolio.topLevel.bond || 0);
+  const cash = clamp(Number(newCash || 0), 0, 30);
+  const budget = Math.max(0, 100 - cash);
+  const nonCash = Math.max(0.0001, oldStock + oldBond);
+  const stock = budget * oldStock / nonCash;
+  const bond = budget - stock;
+  rebalanceTopLevel(portfolio, Number(stock.toFixed(1)), Number(bond.toFixed(1)), Number(cash.toFixed(1)));
+  syncTopLevelControls();
+}
+
 function pctControl(parent, key, label, obj, max=100, onChange=()=>{}){
   const wrap=document.createElement('div'); wrap.className='control-row asset-control';
   const name = obj[key].name || '';
@@ -57,9 +107,9 @@ function setupControls(){
   control('input-cape','Shiller CAPE',15,50,1,state.cape,v=>state.cape=v);
   control('input-income-self','我的年收入',0,30000000,100000,state.incomeSelf,v=>state.incomeSelf=v);
   control('input-income-spouse','家人年收入',0,30000000,100000,state.incomeSpouse,v=>state.incomeSpouse=v);
-  control('input-stock','股票比例',30,90,1,portfolio.topLevel.stock,v=>{ const cash=portfolio.topLevel.cash; rebalanceTopLevel(portfolio, v, Math.max(0,100-v-cash), cash); });
-  control('input-bond','債券比例',0,65,1,portfolio.topLevel.bond,v=>{ const cash=portfolio.topLevel.cash; rebalanceTopLevel(portfolio, Math.max(0,100-v-cash), v, cash); });
-  control('input-cash','現金比例',0,20,1,portfolio.topLevel.cash,v=>{ rebalanceTopLevel(portfolio, Math.max(0,100-v-portfolio.topLevel.bond), portfolio.topLevel.bond, v); });
+  control('input-stock','股票比例（調整後債券自動連動）',0,100,1,portfolio.topLevel.stock,v=>setStockShare(v));
+  control('input-bond','債券比例（調整後股票自動連動）',0,100,1,portfolio.topLevel.bond,v=>setBondShare(v));
+  numberOnlyControl('input-cash','現金比例（直接輸入，股票/債券按原比例重分配）',0,30,portfolio.topLevel.cash,v=>setCashShare(v));
   const ms=$('mode-select'); ms.innerHTML=modes.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); ms.value=state.marketMode; ms.onchange=()=>{state.marketMode=ms.value;render();};
   const ss=$('spending-select'); ss.innerHTML=strategies.map(([v,l])=>`<option value="${v}">${l}</option>`).join(''); ss.value=state.spendingStrategy; ss.onchange=()=>{state.spendingStrategy=ss.value;render();};
   $('dynamic-cola').checked=state.dynamicCola; $('dynamic-cola').onchange=e=>{state.dynamicCola=e.target.checked;render();};
@@ -166,13 +216,13 @@ function exportCashflowCsv() {
   if (!currentSim) return;
   const headers = ['年份','年齡','年初資產','年底資產','生活費','貸款','總支出','提領率','投資報酬','新增投資','貸款餘額','通膨','組合報酬','股票報酬','債券報酬','Freeze'];
   const rows = currentSim.sample.map(r => [r.year,r.age,Math.round(r.beginAssets),Math.round(r.assets),Math.round(r.living),Math.round(r.loanPayment),Math.round(r.totalSpending),r.withdrawalRate.toFixed(2),Math.round(r.investmentReturn),Math.round(r.contribution),Math.round(r.loanBalance),r.inflation?.toFixed?.(2) ?? '',r.ret?.toFixed?.(2) ?? '',r.stockRet?.toFixed?.(2) ?? '',r.bondRet?.toFixed?.(2) ?? '',r.freeze ? 'Y':'N']);
-  downloadCsv('retirement_cashflow_v5_2.csv', headers, rows);
+  downloadCsv('retirement_cashflow_v5_3.csv', headers, rows);
 }
 function exportDecisionCsv() {
   if (!currentMatrix) return;
   const headers = ['淨資產','可投資資產','第一年提領率','成功率','SAFE MAX','建議','邊際成功率'];
   const rows = currentMatrix.map((r,i) => [Math.round(netWorthFromInvestable(r.assets)),Math.round(r.assets),r.firstWithdrawalRate.toFixed(2),r.successRate.toFixed(1),r.safemax.toFixed(2),String(r.advice).replace(/^[^\s]+\s*/,''),i===0?'':(currentMatrix[i].successRate-currentMatrix[i-1].successRate).toFixed(1)]);
-  downloadCsv('retirement_decision_matrix_v5_2.csv', headers, rows);
+  downloadCsv('retirement_decision_matrix_v5_3.csv', headers, rows);
 }
 function renderDiagnostics(sim, matrix) {
   const first = sim.sample[0];
@@ -234,7 +284,7 @@ async function init(){
   // v5.1 changes default living expense from 600萬 to 500萬.
   // If an older saved profile still has the old untouched default 600萬, migrate it once.
   if (!saved?.version && state.annualLivingExpense === 6000000) state.annualLivingExpense = assumptions.annualLivingExpense;
-  // v5.2 fallback for older saved profiles.
+  // v5.3 fallback for older saved profiles.
   state.dynamicColaInflationThreshold ??= assumptions.dynamicColaInflationThreshold ?? 5;
   state.dynamicColaStockDrawdownThreshold ??= assumptions.dynamicColaStockDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
   state.dynamicColaBondDrawdownThreshold ??= assumptions.dynamicColaBondDrawdownThreshold ?? state.dynamicColaDrawdownThreshold ?? -5;
@@ -247,6 +297,6 @@ async function init(){
   $('save-modal-close')?.addEventListener('click', hideSaveModal);
   $('save-modal')?.addEventListener('click', e=>{ if(e.target.id==='save-modal') hideSaveModal(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') hideSaveModal(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.2.0').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=5.3.0').catch(()=>{});
 }
 init();
